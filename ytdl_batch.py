@@ -101,15 +101,15 @@ def main():
             """Return a new path with the stem changed."""
             return path.with_name(stem + path.suffix)
 
-        done_list = with_stem(id_list_file, id_list_file.name + "_done")
-        failed_list = with_stem(id_list_file, id_list_file.name + "_failed")
-        deleted_list = with_stem(id_list_file, id_list_file.name + "_deleted")
+        done_list = with_stem(id_list_file, id_list_file.stem + "_done")
+        failed_list = with_stem(id_list_file, id_list_file.stem + "_failed")
+        deleted_list = with_stem(id_list_file, id_list_file.stem + "_deleted")
     else:
-        done_list = id_list_file.with_stem(id_list_file.name + "_done")
-        failed_list = id_list_file.with_stem(id_list_file.name + "_failed")
+        done_list = id_list_file.with_stem(id_list_file.stem + "_done")
+        failed_list = id_list_file.with_stem(id_list_file.stem + "_failed")
         # This holds a list of IDs we know for sure have been deleted.
         # It is curated by the user, usually updated from the _failed log.
-        deleted_list = id_list_file.with_stem(id_list_file.name + "_deleted")
+        deleted_list = id_list_file.with_stem(id_list_file.stem + "_deleted")
 
     if not id_list_file.exists():
         print(f"File \"{id_list_file}\" does not exist.")
