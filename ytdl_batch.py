@@ -12,6 +12,17 @@ from sys import argv
 from os.path import expanduser, exists
 from typing import Union
 from pathlib import Path
+from platform import python_version_tuple
+
+
+class PathBackPort(Path):
+    def with_stem(self, stem):
+        """Return a new path with the stem changed."""
+        return self.with_name(stem + self.suffix)
+
+ver_tuple = python_version_tuple()
+if int(ver_tuple[1]) < 9:
+    Path = PathBackPort
 
 ids_todo = []
 ids_done = set()
