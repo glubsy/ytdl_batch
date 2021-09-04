@@ -33,15 +33,14 @@ SFX = {
 YTDLP_NAME = "yt-dlp"
 
 # One can set the environment variable "YTDL" to point to yt-dlp (before calling the script)
-if YTDL_PATH := getenv("YTDL"):
+YTDL_PATH = getenv("YTDL")
+if YTDL_PATH:
     YTDL_PATH = expanduser(YTDL_PATH)
     YTDL_PATH_P = Path(YTDL_PATH)
     if not YTDL_PATH_P.exists:
         print(f"{YTDL_PATH_P} does not exist.")
         exit(1)
-
-# If not found, try to look it up in $PATH
-if not YTDL_PATH:
+else:  # If not found, try to look it up in $PATH
     proc = run(
         ['which', YTDLP_NAME], check=False,
         capture_output=False, stdout=DEVNULL, stderr=DEVNULL
