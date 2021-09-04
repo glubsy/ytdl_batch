@@ -14,15 +14,7 @@ from typing import Union
 from pathlib import Path
 from platform import python_version_tuple
 
-
-class PathBackPort(Path):
-    def with_stem(self, stem):
-        """Return a new path with the stem changed."""
-        return self.with_name(stem + self.suffix)
-
-ver_tuple = python_version_tuple()
-if int(ver_tuple[1]) < 9:
-    Path = PathBackPort
+py_ver_tuple = python_version_tuple()
 
 ids_todo = []
 ids_done = set()
@@ -66,7 +58,7 @@ else:  # If not found, try to look it up in $PATH
     YTDL_PATH = YTDLP_NAME
 
 
-for var in (COOKIE_PATH):
+for var in (COOKIE_PATH,):
     pvar = Path(var)
     if not pvar.exists():
         print(f"Error: could not find \"{var}\". Edit the variable")
@@ -101,12 +93,23 @@ def load_from_file(fpath: Path, add_to: Union[list, set]) -> None:
 
 def main():
     id_list_file = Path(argv[1])
-    done_list = id_list_file.with_stem(id_list_file.name + "_done")
-    failed_list = id_list_file.with_stem(id_list_file.name + "_failed")
 
-    # This holds a list of IDs we know for sure have been deleted.
-    # It is curated by the user, usually updated from the _failed log.
-    deleted_list = id_list_file.with_stem(id_list_file.name + "_deleted")
+    # FIXME Temporary backport
+    if int(py_ver_tuple[1]) < 9: 
+        print(f"Python version is {py_ver_tuple}. Using backport workaround.")
+        def with_stem(path: Path, stem: str):
+            """Return a new path with the stem changed."""
+            return path.with_name(stem + path.suffix)
+
+        done_list = with_stem(id_list_file, id_list_file.name + "_done")
+        failed_list = with_stem(id_list_file, id_list_file.name + "_failed")
+        deleted_list = with_stem(id_list_file, id_list_file.name + "_deleted")
+    else:
+        done_list = id_list_file.with_stem(id_list_file.name + "_done")
+        failed_list = id_list_file.with_stem(id_list_file.name + "_failed")
+        # This holds a list of IDs we know for sure have been deleted.
+        # It is curated by the user, usually updated from the _failed log.
+        deleted_list = id_list_file.with_stem(id_list_file.name + "_deleted")
 
     if not id_list_file.exists():
         print(f"File \"{id_list_file}\" does not exist.")
