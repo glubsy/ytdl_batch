@@ -188,7 +188,7 @@ def main():
             print(f"Adding \"{_id}\" to {done_list}")
             f.write(_id + "\n")
 
-        print(f"{'=' * 10} {ids.index(_id) + 1}/{len(ids)} {'=' * 20}\n")
+        print(f"{'=' * 20} {ids.index(_id) + 1}/{len(ids)} {'=' * 20}\n")
         play_sound("SUCCESS")
 
 

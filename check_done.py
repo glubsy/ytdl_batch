@@ -24,18 +24,28 @@ proc = run(
     text=True
 )
 
-youtube_id_re = re.compile(r'.*\][\s_]?(.*)\..{3}', re.IGNORECASE)
+youtube_id_re = re.compile(r'.*\][\s_]?(.{11})\..{3,4}', re.IGNORECASE)
 
-def find_youtube_id(file_list: list) -> set:
-    ids = set()
+def find_youtube_id(file_list: list):
+    ids = []  # a list, not a set to keep the order resulting from the file list
+    miss = []
+    dupes = []
     for fname in file_list:
         match = youtube_id_re.match(fname)
         if match:
             group = match.group(1)
-            ids.add(group)
-    return ids
+            if group in ids:
+                print(f"ID \'{group}\' from \'{fname}\' was already found.")
+                dupes.append(fname)
+            else:   
+                ids.append(group)
+        else:
+            print(f"Did not match regex: {fname}")
+            miss.append(fname)
+    return ids, miss, dupes
 
-def sort_output(output: str) -> tuple[list, int]:
+
+def sort_output(output: str):
     line_count = 0
     filenames = []
     for line in output.split('\n'):
@@ -44,13 +54,22 @@ def sort_output(output: str) -> tuple[list, int]:
             line_count += 1
             filenames.append(line)
     filenames.sort()
+    for fname in filenames:
+        print(fname)
     return filenames, line_count
 
 
 filenames, count = sort_output(proc.stdout)
-print(f"Total files found: {count}")
+print(f"Total files found by suffix: {count}")
 
-ids = find_youtube_id(filenames)
-print(f"IDs found ({len(ids)}): ")
-for id in ids:
-    print(id)
+ids, misses, dupes = find_youtube_id(filenames)
+print(f"IDs found (most ancient at the top):")
+with open("ids_found.txt", "w") as f:
+    for _id in ids:  # reversed: ids[::-1]:
+        print(_id)
+        f.write(_id + '\n')
+print(f"Total found: {len(ids)}.")
+
+print(f"Mismatched files {len(misses)} + dupes {len(dupes)} = {len(misses) + len(dupes)}:")
+for miss in misses:
+    print(miss)
