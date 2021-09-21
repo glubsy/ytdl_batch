@@ -85,10 +85,17 @@ def load_from_file(fpath: Path, add_to: Union[list, set]) -> None:
     with open(fpath, 'r') as f:
         if isinstance(add_to, list):
             for line in f:
-                add_to.append(line.strip())
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                if stripped not in add_to:
+                    add_to.append(stripped)
         else:
             for line in f:
-                add_to.add(line.strip())
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                add_to.add(stripped)
 
 
 def main():
@@ -104,12 +111,14 @@ def main():
         done_list = with_stem(id_list_file, id_list_file.stem + "_done")
         failed_list = with_stem(id_list_file, id_list_file.stem + "_failed")
         deleted_list = with_stem(id_list_file, id_list_file.stem + "_deleted")
+        uniqued_ids = with_stem(id_list_file, id_list_file.stem + "_total")
     else:
         done_list = id_list_file.with_stem(id_list_file.stem + "_done")
         failed_list = id_list_file.with_stem(id_list_file.stem + "_failed")
         # This holds a list of IDs we know for sure have been deleted.
         # It is curated by the user, usually updated from the _failed log.
         deleted_list = id_list_file.with_stem(id_list_file.stem + "_deleted")
+        uniqued_ids = id_list_file.with_stem(id_list_file.stem + "_total")
 
     if not id_list_file.exists():
         print(f"File \"{id_list_file}\" does not exist.")
@@ -119,6 +128,11 @@ def main():
     load_from_file(done_list, ids_done)
     load_from_file(failed_list, ids_failed)
     load_from_file(deleted_list, ids_deleted)
+
+    # Write unique ids because our user input list may have duplicates 
+    with open(uniqued_ids, 'w') as f:
+        for _id in ids_todo:
+            f.write(_id + "\n")
 
     ids = [
         _id for _id in ids_todo
