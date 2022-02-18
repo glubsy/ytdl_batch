@@ -13,11 +13,6 @@ from platform import python_version_tuple
 
 py_ver_tuple = python_version_tuple()
 
-ids_todo = []
-ids_done = set()
-ids_failed = set()
-ids_deleted = set()
-
 # Could also use --cookies-from-browser BROWSER[:PROFILE] with yt-dlp
 COOKIE_PATH = expanduser("~/Cookies/firefox_cookies.txt")
 
@@ -95,8 +90,12 @@ def load_from_file(fpath: Path, add_to: Union[list, set]) -> None:
                 add_to.add(stripped)
 
 
-def main():
-    id_list_file = Path(argv[1])
+def main(id_list_file):
+
+    ids_todo = []
+    ids_done = set()
+    ids_failed = set()
+    ids_deleted = set()
 
     # FIXME Temporary backport
     if int(py_ver_tuple[1]) < 9: 
@@ -204,4 +203,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(Path(argv[1]))

@@ -8,11 +8,12 @@
 from sys import argv
 from typing import List, Tuple
 from urllib.request import Request, urlopen
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, urlparse
 import json
 import gzip
 from io import BytesIO
 import logging
+from datetime import datetime
 log = logging.getLogger(__name__)
 logging.basicConfig()
 # log.setLevel(logging.DEBUG)
@@ -77,7 +78,8 @@ def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
     if cursor is not None:
       params.update({"cursor": cursor})
 
-    _json = do_request(url=ENDPOINT + "?" + urlencode(params, quote_via=quote))
+    url = ENDPOINT + (('&' if urlparse(ENDPOINT).query else '?') + urlencode(params, quote_via=quote))
+    _json = do_request(url=url)
     # _json = req(url=ENDPOINT, params=urlencode(params, quote_via=quote))
 
     has_next = _json.get("hasNext")
@@ -98,8 +100,7 @@ def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
   return vids
 
 
-def main():
-  channel_id = argv[1]
+def main(channel_id: str):
   videos = get_videos_for_channel(channel_id)
 
   # "2" seems to indicate removed?, "1" and "3" appear to be the same?
@@ -108,17 +109,18 @@ def main():
   print(f"Found {len(videos)} IDs, among which {len(possibly_removed)} "
         "are advertised as being deleted.")
 
-  videos_file = f"playboard_ids_{channel_id}.txt"
+  date = datetime.now().strftime("%d%m%Y_%H-%M-%S")
+  videos_file = f"playboard_ids_{channel_id}_{date}.txt"
   with open(videos_file, "w") as f:
     for _id, _ in videos:
       f.write(_id + "\n")
 
   if possibly_removed:
-    deleted_file = f"playboard_ids_{channel_id}_deleted.txt"
+    deleted_file = f"playboard_ids_{channel_id}_deleted_{date}.txt"
     with open(deleted_file, "w") as f:
       for _id in possibly_removed:
         f.write(_id + "\n")
 
 
-if __name__ == "__main__":
-  main()
+if __name__ == "__main__": 
+  main(argv[1])
