@@ -1,6 +1,9 @@
 from subprocess import run
 from sys import argv
 import re 
+import logging
+log = logging.getLogger(__name__)
+logging.basicConfig()
 
 # Crawl files in the given directory and return a set of matched Youtube ID 
 # from their filenames.
@@ -9,8 +12,8 @@ cmd = [
         "find", argv[1], 
         # "-type", "f", r"\(", "-iname", "'*.mkv'", "-o", "-iname", "'*.mp4'", "-printf", r"\)", r"%f\n", 
         "-type", "f", 
-        "-iregex", r'.*\.\(mkv\|mp4\|opus\|m4a\)', "-printf", r"%f\n",
-        # "|", "sed", "-n", r's/^.*\][\s_]\?\(.*\)\..\{3\}$/\1/p'
+        "-iregex", r'.*\.\(mkv\|mp4\|opus\|m4a\|webm\)', "-printf", r"%f\n",
+        # "|", "sed", "-n", r's/^.*\][\s_]\?\(.*\)\..\{3,4\}$/\1/p'
     ]
 
 print(f"cmd: {cmd}")
@@ -24,7 +27,7 @@ proc = run(
     text=True
 )
 
-youtube_id_re = re.compile(r'.*\][\s_]?(.{11})\..{3,4}', re.IGNORECASE)
+youtube_id_re = re.compile(r'.*[\s_]?([0-9A-Za-z_-]{11})\..{3,4}$', re.IGNORECASE)
 
 def find_youtube_id(file_list: list):
     ids = []  # a list, not a set to keep the order resulting from the file list
@@ -35,12 +38,12 @@ def find_youtube_id(file_list: list):
         if match:
             group = match.group(1)
             if group in ids:
-                print(f"ID \'{group}\' from \'{fname}\' was already found.")
+                log.warning(f"ID \'{group}\' from \'{fname}\' was already found.")
                 dupes.append(fname)
             else:   
                 ids.append(group)
         else:
-            print(f"Did not match regex: {fname}")
+            log.info(f"Did not match regex: {fname}")
             miss.append(fname)
     return ids, miss, dupes
 
@@ -55,7 +58,7 @@ def sort_output(output: str):
             filenames.append(line)
     filenames.sort()
     for fname in filenames:
-        print(fname)
+        log.debug(fname)
     return filenames, line_count
 
 
@@ -64,12 +67,13 @@ print(f"Total files found by suffix: {count}")
 
 ids, misses, dupes = find_youtube_id(filenames)
 print(f"IDs found (most ancient at the top):")
+
 with open("ids_found.txt", "w") as f:
     for _id in ids:  # reversed: ids[::-1]:
         print(_id)
         f.write(_id + '\n')
 print(f"Total found: {len(ids)}.")
 
-print(f"Mismatched files {len(misses)} + dupes {len(dupes)} = {len(misses) + len(dupes)}:")
+print(f"{len(misses)} mismatched files + {len(dupes)} dupes = {len(misses) + len(dupes)}:")
 for miss in misses:
     print(miss)
