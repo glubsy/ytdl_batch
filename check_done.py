@@ -3,50 +3,54 @@ from sys import argv
 from typing import List, Tuple
 import re 
 import logging
+from constants import video_file_pattern
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 logging.basicConfig()
 
-# Crawl files in the given directory and return a set of Youtube videoIds 
-# taken from their filenames.
 
-YT_ID_RE = re.compile(r'.*[\s_]?([0-9A-Za-z_-]{11})\..{3,4}$', re.IGNORECASE)
+YT_ID_RE = re.compile(video_file_pattern, re.IGNORECASE)
+log.debug(f"videoId regular expression: {YT_ID_RE}")
+
 
 def find_youtube_id(file_list: list):
   ids = []  # a list, not a set to keep the order resulting from the file list
   miss = []
   dupes = []
   for fname in file_list:
-      match = YT_ID_RE.match(fname)
-      if match:
-          group = match.group(1)
-          if group in ids:
-              log.warning(f"ID \'{group}\' from \'{fname}\' was already found.")
-              dupes.append(fname)
-          else:   
-              ids.append(group)
-      else:
-          log.info(f"Did not match regex: {fname}")
-          miss.append(fname)
+    match = YT_ID_RE.match(fname)
+    if match:
+      group = match.group(1)
+      if group in ids:
+        log.warning(f"ID \'{group}\' from \'{fname}\' was already found.")
+        dupes.append(fname)
+      else:   
+        ids.append(group)
+    else:
+      log.info(f"Did not match regex: {fname}")
+      miss.append(fname)
   return ids, miss, dupes
 
 
 def sort_output(output: str) -> Tuple[List[str], int]:
-  """Takes the string output of find, split by newline and return the """
+  """Takes the string output of find, split by newline and sort."""
   line_count = 0
   filenames = []
   for line in output.split('\n'):
-      line = line.rstrip()
-      if len(line) > 0:
-          line_count += 1
-          filenames.append(line)
+    line = line.rstrip()
+    if len(line) > 0:
+      line_count += 1
+      filenames.append(line)
+  # Sorting, hoping that the first element of the filename is a YYYYMMDD date:
+  # TODO use our own sorting method to match any date format in the string
   filenames.sort()
   for fname in filenames:
-      log.debug(fname)
+    log.debug(f"Sorted: {fname}")
   return filenames, line_count
 
 
 def run_find(target_path) -> str:
-  """Run find on target_path, return the output as a string."""
+  """Run find on target_path for files by extensions, return the output as a string."""
   cmd = [
     "find", target_path, 
     # "-type", "f", r"\(", "-iname", "'*.mkv'", "-o", "-iname", "'*.mp4'", "-printf", r"\)", r"%f\n", 
@@ -69,6 +73,10 @@ def run_find(target_path) -> str:
 
 
 def main(target_path):
+  """
+  Crawl files in the given directory and return a set of Youtube videoIds 
+  taken from their filenames.
+  """
   filenames, count = sort_output(run_find(target_path))
   print(f"Total files found by suffix: {count}")
 
