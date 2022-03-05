@@ -5,7 +5,7 @@ from sys import argv
 from os.path import exists
 from typing import Union
 from pathlib import Path
-from ytdl import dl_ytdlp
+from downloader import ytdl
 from constants import SFX, py_ver_tuple
 
 
@@ -110,7 +110,7 @@ def main(id_list_file):
     try:
       # TODO capture (and pipe) output and report on
       # "[download] Skipping fragment 123 ..."
-      dl_ytdlp(_id, cookies=None)  # use COOKIE_PATH here
+      ytdl.dl_ytdlp(_id, cookies=None)  # use COOKIE_PATH here
     except Exception as e:
       play_sound("FAILED")
       print(f"ERROR. Return code: {e}; ")

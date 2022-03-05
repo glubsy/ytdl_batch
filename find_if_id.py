@@ -3,13 +3,13 @@ from sys import argv
 from typing import List, Tuple
 import re 
 import logging
-from constants import video_file_pattern
+from regex import yt_video_file_pattern
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 logging.basicConfig()
 
 
-YT_ID_RE = re.compile(video_file_pattern, re.IGNORECASE)
+YT_ID_RE = re.compile(yt_video_file_pattern, re.IGNORECASE)
 log.debug(f"videoId regular expression: {YT_ID_RE}")
 
 
@@ -75,7 +75,7 @@ def run_find(target_path) -> str:
 def main(target_path):
   """
   Crawl files in the given directory and return a set of Youtube videoIds 
-  taken from their filenames.
+  taken from their filenames. Write them to file.
   """
   filenames, count = sort_output(run_find(target_path))
   print(f"Total files found by suffix: {count}")

@@ -3,6 +3,7 @@ from os import getenv
 from os.path import expanduser
 from subprocess import run, DEVNULL
 from pathlib import Path
+from downloader.util import setup_handler
 import logging
 log = logging.getLogger(__name__)
 
@@ -10,26 +11,9 @@ BASE_URL = r"https://www.youtube.com/watch?v="
 YTDLP_NAME = "yt-dlp"
 
 # The environment variable can be set to point to yt-dlp if it is not found by which
-YTDL_PATH = getenv("YTDL")
-if YTDL_PATH:
-    YTDL_PATH = expanduser(YTDL_PATH)
-    YTDL_PATH_P = Path(YTDL_PATH)
-    if not YTDL_PATH_P.exists:
-        print(f"{YTDL_PATH_P} does not exist.")
-        exit(1)
-else:  # If not found, try to look it up in $PATH
-    proc = run(
-        ['which', YTDLP_NAME], check=False,
-        capture_output=False, stdout=DEVNULL, stderr=DEVNULL
-    )
-    if not proc.returncode == 0:
-        print(
-            f"`which {YTDLP_NAME}` returned exit code {proc.returncode}, "
-            "and did not find it."
-        )
-        exit(1)
-
-    YTDL_PATH = YTDLP_NAME
+YTDL_PATH = setup_handler(YTDLP_NAME, getenv("YTDL"))
+if YTDL_PATH is None:
+  exit(1)
 
 
 def get_cmd(videoId: str, cookies: Optional[str] = None):
