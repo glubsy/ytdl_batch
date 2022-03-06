@@ -12,7 +12,7 @@ TDCLI_NAME = "TwitchDownloaderCLI"
 TDCLI_PATH = setup_handler(TDCLI_NAME, getenv("TDCLI"))
 if TDCLI_PATH is None:
   # FIXME this should not be fatal, handle graciously
-  print(f"Missing downloader: {TDCLI_NAME}.")
+  print(f"Missing downloader: {TDCLI_NAME}. Please set TDCLI env variable.")
   exit(1)
 
 

@@ -174,8 +174,13 @@ class TwitchDownload(DownloadHandler):
 
     if proc.returncode != 0:
       log.warning(f"{proc.args} returned status code {proc.returncode}")
-      if proc.returncode == -6 and "(404) Not Found." in proc.stderr:
-        raise NotAvailableAnymore("404 not found!")
+      if proc.returncode == -6 or proc.returncode == 134:
+        reason = f"Return code was: {proc.returncode}"
+        if "(404) Not Found." in proc.stderr:
+          reason = "404 not found."
+        elif "Object reference not set to an instance of an object." in proc.stderr:
+          reason = "Object reference not set to an instance of an object."
+        raise NotAvailableAnymore(reason)
       
       log.debug(f"STDERR:\n{proc.stderr}")
       raise Exception(f"Status code: {proc.returncode}")
@@ -197,17 +202,15 @@ class CacheFile():
     with open(self.path, mode) as f:
       f.write(data)
 
-  def load_lines(self) -> List[str]:
+  def load_lines(self) -> Dict[str, List[Path]]:
     with open(self.path, 'r') as f:
-      found = []
+      found = {}
       for line in f.readlines():
         line = line.strip()
         if not line:
           continue
-        found.append((
-          # Append without path data (although we could save those to disk too)
-          line, [])
-        )
+        _id, _path = line.split('\t')
+        found[_id] = [Path(_path)]
     return found
 
   def __del__(self):
@@ -235,16 +238,22 @@ class ProcessHandler():
   #     log.warning(f"Some files were still awaiting download: {self._to_download}!")
 
   @property
-  def to_download(self) -> List[Tuple[str, List[Path]]]:
+  def to_download(self) -> Dict[str, List[Path]]:
+    """
+    Return a new dictionary with only videoIds for which no subtitle file has
+    been detected.
+    """
     if self._to_download is not None:
       return self._to_download
 
     ids = self.regex.store
-    self._to_download = [
-      (_id, ids[_id][0]) 
-      for _id in ids.keys() 
-      if len(ids[_id][1]) == 0
-    ]
+    self._to_download = dict(
+      (
+        (_id, ids[_id][0])
+        for _id in ids.keys() 
+        if (len(ids[_id][1]) == 0 and len(ids[_id][0]) > 0)
+      )
+    )
     return self._to_download
 
   def _prepare_args(
@@ -255,6 +264,7 @@ class ProcessHandler():
         f"{', '.join(str(p) for p in paths)}. "
         f"Downloaded file will be placed in the first path: {str(paths[0])}."
       )
+    # We default to the first path reported
     _path = paths[0] if len(paths) > 0 else None
     
     # Determine the output directory for the subtitle file
@@ -270,36 +280,15 @@ class ProcessHandler():
   def download(
     self, 
     compression: str, 
-    out_path: Optional[Path] = None) -> Tuple[List[Path], List[Path], List[str]]:
+    out_path: Optional[Path] = None,
+    remove_compressed: bool = False
+  ) -> Tuple[List[Path], List[Path], List[str]]:
     
-    # Load caches from disk if they exist
-    if self.cache.already_existed:
-      self._to_download = self.cache.load_lines()
-      log.debug(
-        f"Loaded from {self.cache.path.name} "
-        f"_to_download: {self._to_download}")
-
-    if self.failed_cache.already_existed:
-      self._failed_download = self.cache.load_lines()
-      log.debug(
-        f"Loaded from {self.failed_cache.path.name} "
-        f"_failed_download: {self._failed_download}")
-
-    # Overwrite todo list of videoIds to disks
-    with open(self.cache.path, 'w') as f:
-      if self._failed_download:
-        for _id in (entry[0] for entry in self.to_download 
-                  if entry[0] not in self._failed_download):
-          f.write(_id + "\n")
-      else:
-        for entry in self.to_download:
-          f.write(entry[0] + "\n")
-
     # for each videoId, download subs in the same directory
     did_fail = []
     did_download = []
     did_compress = []
-    for _id, _paths in self.to_download:
+    for _id, _paths in self.to_download.items():
       args = self._prepare_args(videoId=_id, paths=_paths, out_path=out_path)
       _out_path = args.get("out_path")
 
@@ -317,8 +306,10 @@ class ProcessHandler():
         written = _out_path / written if _out_path is not None else Path() / written
         print(f"Written file: \"{written}\".")
 
-        compressed = compress(written, in_fd=None, algo=compression, 
-                              on_success="remmmmmmove?")
+        compressed = compress(
+          written, in_fd=None, algo=compression, 
+          on_success="remove" if remove_compressed else "nothing"
+        )
         if compressed:
           did_compress.append(compressed)
       except AlreadyPresentError:
@@ -327,18 +318,11 @@ class ProcessHandler():
       except NotAvailableAnymore as e:
         log.warning(f"VideoId {_id} is not available anymore: {e}")
         did_fail.append(_id)
-        self.failed_cache.write(_id + "\n")
+        self.failed_cache.write(_id + "\t" + str(_paths[0]) + "\n")
       except Exception as e:
         log.exception(e)
         did_fail.append(_id)
-        self.failed_cache.write(_id + "\n")
-      
-    # Flush remaining downloads to disk if any
-    if self.to_download:
-      with open(self.cache.path, 'w') as f:
-        for _id, _ in self.to_download:
-          if _id not in did_fail and _id not in did_download:
-            f.write(_id + "\n")
+        self.failed_cache.write(_id + "\t" + str(_paths[0]) + "\n")
 
     return did_download, did_compress, did_fail
 
@@ -388,7 +372,10 @@ textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
 is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
 
 
-def compress_subs(supplied_path: Path, compression: str
+def compress_subs(
+  supplied_path: Path, 
+  compression: str, 
+  remove_compressed: bool
 ) -> Generator[Optional[Path], None, None]:
   """Find json sub files and compress them."""
   # Gather all json files
@@ -402,7 +389,12 @@ def compress_subs(supplied_path: Path, compression: str
       # Have to rewind the cursor after reading the first chunk!
       fd.seek(0)
       try:
-        yield compress(f, fd, algo=compression, on_success="NOTHING")
+        yield compress(
+          f, 
+          fd, 
+          algo=compression, 
+          on_success=("remove" if remove_compressed else "nothing")
+        )
       except Exception as e:
         log.exception(e)
 
@@ -423,6 +415,9 @@ def parse_args(args):
   parser.add_argument(
     '--output-path', metavar='OUTPATH', type=str, default=None,
     help='A directory where to put all downloaded subtitles.')
+  parser.add_argument(
+    '--remove-compressed', action="store_true", default=False,
+    help='Remove subtitle file after compression has succeeded.')
   parser.add_argument(
     'path', metavar='PATH', type=str,
     help='Path where to look up for files. This can be a directory in which case'
@@ -470,8 +465,8 @@ def main(args=None) -> int:
 
     for search in services:
       print(f"Found {len(search.to_download)} {search.service_name} videoIds to download: ")
-      for i, _ in search.to_download:
-        print(i)
+      for _id, _ in search.to_download.items():
+        print(_id)
       log.debug(
         f"{len(search.regex.store.keys())} files found by regexes: "
         f"{search.regex.store}.")
@@ -480,11 +475,49 @@ def main(args=None) -> int:
       # # DEBUG
       # continue
       
+      # Load caches from disk if they exist
+      if search.cache.already_existed:
+        search._to_download = search.cache.load_lines()
+        log.debug(
+          f"Loaded from {search.cache.path.name} "
+          f"_to_download: {search._to_download}")
+
+      if search.failed_cache.already_existed:
+        search._failed_download = search.failed_cache.load_lines()
+        log.debug(
+          f"Loaded from {search.failed_cache.path.name} "
+          f"_failed_download: {search._failed_download}")
+        # Remove the file to avoid adding duplicates during this run
+        search.failed_cache.path.unlink()
+
+      # Overwrite todo list of videoIds to disks
+      with open(search.cache.path, 'w') as f:
+        # Filter out previously failed ids loaded from disk
+        if search._failed_download:  # _failed_download could be None
+          for _id, _path in search.to_download.items(): 
+            if _id not in search._failed_download.keys():
+              f.write(_id + "\t" + str(_path[0]) + "\n")
+        else:
+          for _id, _paths in search.to_download.items():
+            f.write(_id + "\t" + str(_paths[0]) + "\n")
+
       downloaded, compressed, failed = search.download(
-        compression=pargs.compression, out_path=output_path)
+        compression=pargs.compression, 
+        out_path=output_path,
+        remove_compressed=pargs.remove_compressed
+        )
 
       print(f"Successfully downloaded {len(downloaded)} / "
             f"{len(search.to_download)} subtitle files.")
+
+      # Flush remaining downloads to disk if any
+      # TODO intercept KILL signal and flush
+      if len(downloaded) != len(search.to_download):
+        with open(search.cache.path, 'w') as f:
+          for _id, _paths in search.to_download.items():
+            if _id not in failed and _id not in downloaded:
+              # Only store the first entry which should be enough to keep the date
+              f.write(_id + "\t" + str(_paths[0]) + "\n")
 
       if len(failed) > 0:
         print("Failed getting subtitles for these ids:")
@@ -497,9 +530,14 @@ def main(args=None) -> int:
           print(s)
 
   elif pargs.mode == "compress":
-    for c in compress_subs(supplied_path, compression=pargs.compression):
+    for c in compress_subs(
+      supplied_path, 
+      compression=pargs.compression, 
+      remove_compressed=pargs.remove_compressed
+    ):
       if c is not None:
-        log.info(f"Written {c}")
+        print(f"Written {c}")
+  
   return 0
 
 if __name__ == "__main__":

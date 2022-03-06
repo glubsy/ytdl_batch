@@ -13,6 +13,7 @@ YTDLP_NAME = "yt-dlp"
 # The environment variable can be set to point to yt-dlp if it is not found by which
 YTDL_PATH = setup_handler(YTDLP_NAME, getenv("YTDL"))
 if YTDL_PATH is None:
+  print("Could not find yt-dlp. Please set the YTDL env variable.")
   exit(1)
 
 
