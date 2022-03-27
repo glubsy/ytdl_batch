@@ -40,43 +40,53 @@ def compress(
   on_success = "remove"
 ) -> Optional[Path]:
   """
-  Compress file pointed to by in_file. fd can be an open file descriptor to
-  the file. out_dir is the output directory. If on_success == "remove" the original
-  file will be deleted.
+  Compress file pointed to by in_file. in_fd can be an open file descriptor to
+  the file. out_dir is the output directory. If on_success == "remove" the 
+  original file will be deleted.
+  
+  Return:
+  ------
+  Output bz2 file path on effective compression, otherwise None.
   """
+  out_file = in_file.with_suffix(in_file.suffix + f".{algo}")
   written = None
+  
   if in_fd is None:
     with open(in_file, "rb") as in_fd:
-      written = compress_file(in_fd, base_out_path=in_file, algo=algo)
+      written = _compress_file(in_fd, out_file=out_file, algo=algo)
   else:   # Reuse the open file descriptor if possible
-    written = compress_file(in_fd, base_out_path=in_file, algo=algo)
+    written = _compress_file(in_fd, out_file=out_file, algo=algo)
 
-  if on_success == "remove" and written is not None and written.exists():
-    log.info(f"Removing original file {in_file}.")
-    in_file.unlink()
+  if written:
+    if on_success == "remove" and out_file.exists():
+      log.info(f"Removing original file \"{in_file}\".")
+      in_file.unlink()
+    return out_file
+  else:
+    return None
 
-  return written
 
-def compress_file(in_fd, base_out_path: Path, algo: str) -> Optional[Path]:
-  """Compress in_fd into the same directory. Return produced file path on success."""
-  out_file = base_out_path.with_suffix(base_out_path.suffix + f".{algo}")
+def _compress_file(in_fd, out_file: Path, algo: str) -> bool:
+  """Compress in_fd into the file pointed by out_file. 
+  If compression has occured, return True. If out file already existed
+  return False."""
 
   if out_file.exists():
     log.warning(f"{out_file} already exists. Skipping compression.")
-    return None
+    return False
 
   if algo == "bz2":
     with bz2.open(out_file, "wb") as f:
       # Write compressed data to file
       f.write(in_fd.read())
-    return out_file
+    return True
 
-  if algo == "gz":
+  elif algo == "gz":
     with gzip.open(out_file, "wb") as f_out:
       shutil.copyfileobj(in_fd, f_out)
-    return out_file
+    return True
 
-  raise Exception("Incorrect algorithm supplied: must be [bz2|gz].")
+  raise Exception("Incorrect algorithm specified: must be [bz2|gz].")
 
 
 def find_files(path: Path, exts: List[str] = ["json"]) -> Generator[Path, None, None]:
@@ -309,14 +319,16 @@ class ProcessHandler():
         did_download.append(_id)
 
         written = _out_path / written if _out_path is not None else Path() / written
-        print(f"Written file: \"{written}\".")
+        print(f"Written subtitle file: \"{written}\".")
 
         compressed = compress(
           written, in_fd=None, algo=compression, 
           on_success="remove" if remove_compressed else "nothing"
         )
         if compressed:
+          print(f"Compressed file: \"{compressed}\"")
           did_compress.append(compressed)
+
       except AlreadyPresentError:
         log.warning(
           f"File {_out_path} was already present according to {self.downloader.name}.")
@@ -382,7 +394,9 @@ def compress_subs(
   compression: str, 
   remove_compressed: bool
 ) -> Generator[Optional[Path], None, None]:
-  """Find json sub files and compress them."""
+  """
+  Find json sub files in supplied path and compress them all.
+  """
   # Gather all json files
   files = find_files(path=supplied_path, exts=["json"])
   for f in files:
