@@ -108,20 +108,24 @@ def crawl_files(path: Path) -> Generator[Tuple[str, str], None, None]:
 class DownloadHandler():
   name = None
 
-  @classmethod
-  def download(cls, videoId: str, kwargs) -> Optional[Path]:
+  def __init__(self, *args, **kwargs) -> None:
+    self.cookies: Optional[Path] = None
+    if cookies := kwargs.get("cookies"):
+      self.cookies = Path(cookies).expanduser()
+
+  def download(self, videoId: str, kwargs) -> Optional[Path]:
     raise NotImplementedError
 
 
 class YoutubeDownload(DownloadHandler):
   name = "yt-dlp"
 
-  @classmethod
-  def download(cls, videoId: str, kwargs) -> Optional[Path]:
+  def download(self, videoId: str, kwargs) -> Optional[Path]:
     """Call yt-dlp on videoId. Return the path to the written file."""
-    cmd = ytdl.get_cmd(videoId, cookies=None)  # use COOKIE_PATH here if needed
+    cmd = ytdl.get_cmd(videoId, cookies=self.cookies)  # use COOKIE_PATH here if needed
     cmd.insert(-1, "--skip-download")
     cmd.insert(-1, "--no-write-thumbnail")
+    # We don't need thumbnails for subtitle-only downloads 
     try:
       cmd.remove("--embed-thumbnail")
     except:
@@ -139,7 +143,7 @@ class YoutubeDownload(DownloadHandler):
       if proc.returncode != 0:
         log.warning(f"{proc.args} returned status code {proc.returncode}")
         if "members-only content" in proc.stderr:
-          raise NeedCookies("Member-only content. Please use your cookies.")
+          raise NeedCookies("Member-only content. Valid cookies are required.")
 
         log.debug(f"STDERR:\n{proc.stderr}")
         raise Exception(f"Status code: {proc.returncode}")
@@ -158,8 +162,9 @@ class YoutubeDownload(DownloadHandler):
 class TwitchDownload(DownloadHandler):
   name = "TwitchDownloaderCLI"
 
-  @classmethod
-  def download(cls, videoId: str, kwargs) -> Optional[Path]:
+  # TODO parse cookies file and pass only the oauth value as self.cookies 
+
+  def download(self, videoId: str, kwargs) -> Optional[Path]:
     if not videoId:
       raise Exception(f"No videoId submitted: {videoId}")
     
@@ -226,10 +231,10 @@ class ProcessHandler():
   service_name = ""
 
   def __init__(self, *args, **kwargs) -> None:
-    self.regex: BaseRegex = kwargs['regex']
-    self.cache: CacheFile = kwargs['cache']
-    self.failed_cache: CacheFile = kwargs['failed_cache']
-    self.downloader: DownloadHandler = kwargs['downloader']
+    self.regex: BaseRegex = kwargs["regex"]
+    self.cache: CacheFile = kwargs["cache"]
+    self.failed_cache: CacheFile = kwargs["failed_cache"]
+    self.downloader: DownloadHandler = kwargs["downloader"]
     self._to_download = None
     self._failed_download = None
   
@@ -332,12 +337,12 @@ class YoutubeHandler(ProcessHandler):
   cached_fail_name = "yt_" + ProcessHandler.cached_fail_name
   service_name = "Youtube"
 
-  def __init__(self) -> None:
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(
       regex=YoutubeRegex(), 
       cache=CacheFile(Path(self.cached_name)), 
       failed_cache=CacheFile(Path(self.cached_fail_name)), 
-      downloader=YoutubeDownload()
+      downloader=YoutubeDownload(cookies=kwargs.get("cookies")),
     )
 
 
@@ -350,7 +355,7 @@ class TwitchHandler(ProcessHandler):
     super().__init__(
       regex=TwitchRegex(), 
       cache=CacheFile(Path(self.cached_name)), 
-      failed_cache=CacheFile(Path(self.cached_fail_name)), 
+      failed_cache=CacheFile(Path(self.cached_fail_name)),
       downloader=TwitchDownload()
     )
 
@@ -419,6 +424,9 @@ def parse_args(args):
     '--remove-compressed', action="store_true", default=False,
     help='Remove subtitle file after compression has succeeded.')
   parser.add_argument(
+    '--cookies', metavar="COOKIES", type=str, default=None,
+    help='Path to cookie file to pass to downloaders (for members-only videos).')
+  parser.add_argument(
     'path', metavar='PATH', type=str,
     help='Path where to look up for files. This can be a directory in which case'
       ' we will scan for missing subtitle files. If this is a text file, each '
@@ -446,13 +454,13 @@ def main(args=None) -> int:
 
     services = []
     if pargs.service == "youtube":
-      services.append(YoutubeHandler())
+      services.append(YoutubeHandler(cookies=pargs.cookies))
     elif pargs.service == "twitch":
       services.append(TwitchHandler())
     else:  # all
       # It's importa that twitch is first because youtube's regex is greedier
       # and returns too many false positives
-      services = [TwitchHandler(), YoutubeHandler()]
+      services = [TwitchHandler(), YoutubeHandler(cookies=pargs.cookies)]
 
     for root, f in crawl_files(supplied_path):
       for search in services:

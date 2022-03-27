@@ -17,7 +17,7 @@ if YTDL_PATH is None:
   exit(1)
 
 
-def get_cmd(videoId: str, cookies: Optional[str] = None):
+def get_cmd(videoId: str, cookies: Optional[Path] = None):
   cmd = [
     str(YTDL_PATH), "-v", 
     "--exec", "echo", # print name written after postprocessing complete (not sure if this works)
@@ -47,11 +47,12 @@ def get_cmd(videoId: str, cookies: Optional[str] = None):
     BASE_URL + videoId
   ]
   if cookies is not None:
-    cmd.insert(-1, cookies)
+    cmd.insert(-1, "--cookies")
+    cmd.insert(-1, str(cookies))
   return cmd
 
 
-def dl_ytdlp(video_id: str, cookies: Optional[str] = None):
+def dl_ytdlp(video_id: str, cookies: Optional[Path] = None):
   """This function will throw any exception from the subprocess module."""
   cmd = get_cmd(videoId=video_id, cookies=cookies) # use COOKIE_PATH here
   log.info("Running command: {}".format(" ".join(cmd)))

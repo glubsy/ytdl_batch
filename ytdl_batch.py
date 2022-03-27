@@ -110,7 +110,7 @@ def main(id_list_file):
     try:
       # TODO capture (and pipe) output and report on
       # "[download] Skipping fragment 123 ..."
-      ytdl.dl_ytdlp(_id, cookies=None)  # use COOKIE_PATH here
+      ytdl.dl_ytdlp(_id, cookies=None)  # use COOKIE_PATH here (pathlib.Path)
     except Exception as e:
       play_sound("FAILED")
       print(f"ERROR. Return code: {e}; ")

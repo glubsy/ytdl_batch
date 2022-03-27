@@ -18,7 +18,7 @@ if TDCLI_PATH is None:
 
 def get_cmd(videoId: str, args):
   """Generate yt-dlp to download from twitch"""
-  pass
+  raise NotImplementedError()
 
 
 def get_subs_cmd(videoId: str, kwargs):
@@ -38,4 +38,5 @@ def get_subs_cmd(videoId: str, kwargs):
     "--id", videoId,
     "-o", str(output_path)
   ]
+  # TODO pass in oauth value from cookies
   return cmd
