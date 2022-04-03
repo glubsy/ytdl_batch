@@ -27,29 +27,44 @@ twitch_video_file_pattern = (
   + '))$'
 )
 
-base_subn = "live_chat"
-sub_exts = [
-  f"{base_subn}.json", f"{base_subn}.json.gz", f"{base_subn}.json.bz2", "json"
-]
-sub_exts_esc = '|'.join(re.escape(e) for e in sub_exts)
+def sub_extensions(base_sub_name: str) -> List:
+  """
+  Return a list of extension base names.
+  """
+  if base_sub_name:
+    base_sub_name = base_sub_name + "."
+  return [
+    f"{base_sub_name}json", 
+    f"{base_sub_name}json.gz", 
+    f"{base_sub_name}json.bz2", 
+    "json"  # FIXME not sure about this one
+  ]
+
+
+yt_base_subn = "live_chat"
+yt_sub_exts = sub_extensions(yt_base_subn)
+yt_sub_exts_esc = '|'.join(re.escape(e) for e in yt_sub_exts)
 # This should match both media and any sub-title files
 yt_recording_file_pattern = (
   base_yt_video_file_pattern
   + r'(?P<extension>'
   + media_extensions_re
   + '|'
-  + sub_exts_esc
+  + yt_sub_exts_esc
   + r')$'
 )
 
 # This should only match sub files in format 20220101_v1234567890, not videos
 date_pattern = r'(?:\d{8})'
+twitch_base_subn = ""  # No explicit name for twitch subs, only date_twitchVideoId
+twitch_sub_exts = sub_extensions(twitch_base_subn)
+twitch_sub_exts_esc = '|'.join(re.escape(e) for e in twitch_sub_exts)
 twitch_sub_file_pattern = (
   r'^'
   + date_pattern
   + base_twitch_video_file_pattern
   + r'\.(?:' # don't capture the period of the extension
-  + sub_exts_esc
+  + twitch_sub_exts_esc
   + r')$'
 )
 
@@ -91,7 +106,7 @@ class YoutubeRegex(BaseRegex):
       return False
     # Add to the list of media files or the list of subtitles depending on
     # the type of extension detected.
-    self.store[_id][1 if match.group("extension") in sub_exts else 0]\
+    self.store[_id][1 if match.group("extension") in yt_sub_exts else 0]\
       .append(Path(Path(root) / Path(filename)))
     log.debug(f"Found youtube media file {filename} against {self.regex}")
     return True

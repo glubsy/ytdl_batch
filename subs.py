@@ -1,21 +1,19 @@
 #!/bin/env python3
 from os import walk
-from collections import defaultdict
-import re
 from pathlib import Path
-from typing import DefaultDict, Iterable, Optional, List, Dict, Generator, Pattern, Tuple, Any
+from typing import Optional, List, Dict, Generator, Tuple, Any
 import argparse
 import gzip
 import bz2
 import shutil
-import fileinput
+from json import dumps
+from pprint import pprint
+# import fileinput
 import logging
 from downloader import twitch, ytdl
-from constants import COOKIE_PATH
 from subprocess import run, CalledProcessError
 from regex import (
-  BaseRegex, TwitchRegex, YoutubeRegex, yt_recording_file_pattern, 
-  twitch_sub_file_pattern, twitch_video_file_pattern, sub_exts
+  BaseRegex, TwitchRegex, YoutubeRegex, 
 )
 
 log = logging.getLogger()
@@ -49,6 +47,7 @@ def compress(
   Output bz2 file path on effective compression, otherwise None.
   """
   out_file = in_file.with_suffix(in_file.suffix + f".{algo}")
+  log.debug(f"Will compress {in_file.name} into {out_file.name}...")
   written = None
   
   if in_fd is None:
@@ -95,7 +94,7 @@ def find_files(path: Path, exts: List[str] = ["json"]) -> Generator[Path, None, 
   #   for f in files:
   #     if Path(f).suffix == ext
   for ext in exts:
-    for f in Path(path).rglob(fr'*.{ext}'):
+    for f in Path(path).rglob(f'*.{ext}'):
       yield f
 
 
@@ -103,10 +102,6 @@ def read_file(filepath) -> Generator[str, None, None]:
   with open(filepath, "r") as f:
     for _id in f.readlines():
       yield _id
-
-
-YT_ID_RE = re.compile(yt_recording_file_pattern, re.IGNORECASE)
-TWITCH_ID_RE = re.compile(twitch_video_file_pattern, re.IGNORECASE)
 
 
 def crawl_files(path: Path) -> Generator[Tuple[str, str], None, None]:
@@ -479,11 +474,11 @@ def main(args=None) -> int:
     for root, f in crawl_files(supplied_path):
       for search in services:
         if search.regex.match(root, f):
-          log.debug(f"{search.service_name} videoId found for {f}.")
+          log.debug(f"{search.service_name} videoId found in {f}.")
           # Optimization: we had a match, skip any other lookup
           break
         else:
-          log.debug(f"No {search.service_name} videoId found for {f}.")
+          log.debug(f"No {search.service_name} videoId found in {f}.")
 
     for search in services:
       print(f"Found {len(search.to_download)} {search.service_name} videoIds to download: ")
@@ -491,8 +486,8 @@ def main(args=None) -> int:
         print(_id)
       log.debug(
         f"{len(search.regex.store.keys())} files found by regexes: "
-        f"{search.regex.store}.")
-      log.debug(f"{search.service_name} videoIds to download: {search.to_download}.")
+        f"{pprint(search.regex.store)}.")
+      log.debug(f"{search.service_name} subs to download: {search.to_download}.")
       
       # # DEBUG
       # continue
