@@ -16,6 +16,11 @@ Use playboard to get a list of videoIds for a channel.
 
 Download subtitle files for each videoId found.
 
+```
+subs.py --mode "download" --remove-compressed --cookies ~/Cookies/cookies.txt /target
+subs.py --mode "compress" --remove-compressed --cookies ~/Cookies/cookies.txt /target
+```
+
 ### TODO
 
 * Pass cookies for members-only videos (Twitch handler in subs)

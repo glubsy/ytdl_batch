@@ -467,8 +467,8 @@ def main(args=None) -> int:
     elif pargs.service == "twitch":
       services.append(TwitchHandler())
     else:  # all
-      # It's importa that twitch is first because youtube's regex is greedier
-      # and returns too many false positives
+      # It's important that twitch is first because youtube's regex is greedier
+      # and would return too many false positives
       services = [TwitchHandler(), YoutubeHandler(cookies=pargs.cookies)]
 
     for root, f in crawl_files(supplied_path):
@@ -504,8 +504,15 @@ def main(args=None) -> int:
         log.debug(
           f"Loaded from {search.failed_cache.path.name} "
           f"_failed_download: {search._failed_download}")
-        # Remove the file to avoid adding duplicates during this run
-        search.failed_cache.path.unlink()
+        # Remove the file to avoid adding duplicates during this run, if we retry them
+        # search.failed_cache.path.unlink()
+
+      # FIXME do not redownload previously failed downloads and do not remove 
+      # the _failed_download file above; 
+      # instead have the user delete the file themselves if they
+      # really want to retry downloading previously failed downloads.
+      # Or maybe have them reame the file to _retry_download if they want to retry
+      # into the same paths.
 
       # Overwrite todo list of videoIds to disks
       with open(search.cache.path, 'w') as f:

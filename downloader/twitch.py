@@ -34,7 +34,7 @@ def get_subs_cmd(videoId: str, kwargs):
 
   cmd = [
     str(TDCLI_PATH), 
-    "-m", "ChatDownload", 
+    "chatdownload", 
     "--id", videoId,
     "-o", str(output_path)
   ]

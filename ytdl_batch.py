@@ -24,6 +24,11 @@ def play_sound(key: str) -> None:
 
 
 def load_from_file(fpath: Path, add_to: Union[list, set]) -> None:
+  """
+  Load lines in fpath into add_to. Order is preserved if add_to is a list.
+  Ignore lines starting with # (comments).
+  Format of fpath should be one videoId per line, each ending with a newline.
+  """
   if not exists(fpath):
     print(f"{fpath} does not exists.")
     return
@@ -49,7 +54,7 @@ def main(id_list_file):
   ids_failed = set()
   ids_deleted = set()
 
-  # FIXME Temporary backport
+  # Temporary backport: pathlib in python < 3.9 does not have Path.with_stem method
   if int(py_ver_tuple[1]) < 9: 
     print(f"Python version is {py_ver_tuple}. Using backport workaround.")
     def with_stem(path: Path, stem: str):
