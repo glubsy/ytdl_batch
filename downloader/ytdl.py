@@ -5,7 +5,7 @@ from subprocess import run, DEVNULL
 from pathlib import Path
 from downloader.util import setup_handler
 import logging
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 BASE_URL = r"https://www.youtube.com/watch?v="
 YTDLP_NAME = "yt-dlp"

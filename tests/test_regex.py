@@ -4,7 +4,7 @@ import logging
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
-from regex import TwitchRegex, YoutubeRegex
+from regex import TwitchScanner, YoutubeScanner
 from conftest import *
 
 
@@ -48,7 +48,7 @@ def assert_matched(lookup, regex_type):
 
 def test_regexes():
   for test_case in TEST_CASES:
-    _type = TwitchRegex \
+    _type = TwitchScanner \
       if type(test_case) in (TwitchVideo, TwitchSub) \
-      else YoutubeRegex
+      else YoutubeScanner
     assert_matched(lookup=test_case, regex_type=_type)

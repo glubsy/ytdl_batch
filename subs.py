@@ -1,24 +1,25 @@
 #!/bin/env python3
-from os import walk
+from os import walk, sep
+from os.path import join as pjoin
+import sys
+import re
 from pathlib import Path
 from typing import Optional, List, Dict, Generator, Tuple, Any
 import argparse
 import gzip
 import bz2
 import shutil
-from json import dumps
 from pprint import pprint
 # import fileinput
 import logging
 from downloader import twitch, ytdl
 from subprocess import run, CalledProcessError
 from regex import (
-  BaseRegex, TwitchRegex, YoutubeRegex, 
+  BaseScanner, TwitchScanner, YoutubeScanner,
 )
 
 log = logging.getLogger()
-log.setLevel(logging.DEBUG)
-
+# log.setLevel(logging.DEBUG)
 
 class AlreadyPresentError(Exception):
   pass
@@ -27,6 +28,9 @@ class NotAvailableAnymore(Exception):
   pass
 
 class NeedCookies(Exception):
+  pass
+
+class NoSubsAvailable(Exception):
   pass
 
 
@@ -39,9 +43,9 @@ def compress(
 ) -> Optional[Path]:
   """
   Compress file pointed to by in_file. in_fd can be an open file descriptor to
-  the file. out_dir is the output directory. If on_success == "remove" the 
+  the file. out_dir is the output directory. If on_success == "remove" the
   original file will be deleted.
-  
+
   Return:
   ------
   Output bz2 file path on effective compression, otherwise None.
@@ -49,7 +53,7 @@ def compress(
   out_file = in_file.with_suffix(in_file.suffix + f".{algo}")
   log.debug(f"Will compress {in_file.name} into {out_file.name}...")
   written = None
-  
+
   if in_fd is None:
     with open(in_file, "rb") as in_fd:
       written = _compress_file(in_fd, out_file=out_file, algo=algo)
@@ -66,7 +70,7 @@ def compress(
 
 
 def _compress_file(in_fd, out_file: Path, algo: str) -> bool:
-  """Compress in_fd into the file pointed by out_file. 
+  """Compress in_fd into the file pointed by out_file.
   If compression has occured, return True. If out file already existed
   return False."""
 
@@ -104,8 +108,16 @@ def read_file(filepath) -> Generator[str, None, None]:
       yield _id
 
 
-def crawl_files(path: Path) -> Generator[Tuple[str, str], None, None]:
+def crawl_files(
+  path: Path,
+  filter_re: Optional[re.Pattern]
+) -> Generator[Tuple[str, str], None, None]:
+  """
+  Filter out files by regex.
+  """
   for root, _, files in walk(path):
+    if filter_re is not None and filter_re.match(root + sep):
+      continue
     for f in files:
       yield root, f
 
@@ -130,7 +142,7 @@ class YoutubeDownload(DownloadHandler):
     cmd = ytdl.get_cmd(videoId, cookies=self.cookies)  # use COOKIE_PATH here if needed
     cmd.insert(-1, "--skip-download")
     cmd.insert(-1, "--no-write-thumbnail")
-    # We don't need thumbnails for subtitle-only downloads 
+    # We don't need thumbnails for subtitle-only downloads
     try:
       cmd.remove("--embed-thumbnail")
     except:
@@ -159,6 +171,8 @@ class YoutubeDownload(DownloadHandler):
           return Path(filename)
         if "Video subtitle live_chat.json is already present" in line:
           raise AlreadyPresentError()
+        if "no subtitles for the requested language":
+          raise NoSubsAvailable("No subtitles available for the requested language.")
 
     except CalledProcessError as e:
       log.exception(e)
@@ -167,12 +181,12 @@ class YoutubeDownload(DownloadHandler):
 class TwitchDownload(DownloadHandler):
   name = "TwitchDownloaderCLI"
 
-  # TODO parse cookies file and pass only the oauth value as self.cookies 
+  # TODO parse cookies file and pass only the oauth value as self.cookies
 
   def download(self, videoId: str, kwargs) -> Optional[Path]:
     if not videoId:
       raise Exception(f"No videoId submitted: {videoId}")
-    
+
     cmd = twitch.get_subs_cmd(videoId, kwargs)
     out_path = kwargs.get("out_path")
 
@@ -191,16 +205,19 @@ class TwitchDownload(DownloadHandler):
         elif "Object reference not set to an instance of an object." in proc.stderr:
           reason = "Object reference not set to an instance of an object."
         raise NotAvailableAnymore(reason)
-      
+
       log.debug(f"STDERR:\n{proc.stderr}")
       raise Exception(f"Status code: {proc.returncode}")
 
     # Last item should be the output filename
-    
+
     return out_path / Path(cmd[-1]) if out_path is not None else Path(cmd[-1])
 
 
 class CacheFile():
+  """
+  Store errors for each Id as Id\tPath.name\tError message.
+  """
   def __init__(self, path: Path) -> None:
     self.path = path
     self.already_existed = True
@@ -208,7 +225,8 @@ class CacheFile():
       self.already_existed = False
       path.touch()
 
-  def write(self, data, mode="a"):
+  def write(self, data: str, mode='a'):
+    # TODO enforce a consistent format in order to load back safely
     with open(self.path, mode) as f:
       f.write(data)
 
@@ -219,7 +237,14 @@ class CacheFile():
         line = line.strip()
         if not line:
           continue
-        _id, _path = line.split('\t')
+
+        values = line.split('\t')
+        if len(values) == 3:
+          # Currently we don't care about loading errors back in
+          _id, _path, _ = values
+        else:
+          _id, _path = values
+
         found[_id] = [Path(_path)]
     return found
 
@@ -231,18 +256,27 @@ class CacheFile():
 
 
 class ProcessHandler():
-  cached_name = "subs_to_download.txt"
   cached_fail_name = "subs_failed.txt"
   service_name = ""
 
   def __init__(self, *args, **kwargs) -> None:
-    self.regex: BaseRegex = kwargs["regex"]
-    self.cache: CacheFile = kwargs["cache"]
+    self.scanner: BaseScanner = kwargs["regex"]
     self.failed_cache: CacheFile = kwargs["failed_cache"]
     self.downloader: DownloadHandler = kwargs["downloader"]
-    self._to_download = None
-    self._failed_download = None
-  
+    self._to_download: Optional[Dict] = None
+    self._failed_download: Dict = {}
+
+    if self.failed_cache.already_existed:
+      self._failed_download = self.failed_cache.load_lines()
+      if len(self._failed_download):
+        print(
+          f"Loaded {len(self._failed_download)} failed downloads from "
+          f"\"{self.failed_cache.path.name}\"."
+        )
+        log.debug(f"Loaded failed download Ids:\n{self._failed_download}")
+      else:
+        print(f"No failed {self.service_name} download found from a previous run.")
+
   # def __del__(self):
   #   if self._to_download:
   #     log.warning(f"Some files were still awaiting download: {self._to_download}!")
@@ -256,12 +290,14 @@ class ProcessHandler():
     if self._to_download is not None:
       return self._to_download
 
-    ids = self.regex.store
+    ids = self.scanner.store
     self._to_download = dict(
       (
         (_id, ids[_id][0])
-        for _id in ids.keys() 
+        for _id in ids.keys()
+        # Only load Ids that do not have subs files attached already (at index 1)
         if (len(ids[_id][1]) == 0 and len(ids[_id][0]) > 0)
+        and _id not in self._failed_download.keys()
       )
     )
     return self._to_download
@@ -276,7 +312,7 @@ class ProcessHandler():
       )
     # We default to the first path reported
     _path = paths[0] if len(paths) > 0 else None
-    
+
     # Determine the output directory for the subtitle file
     _out_path = out_path
     if _path is not None:
@@ -288,12 +324,12 @@ class ProcessHandler():
     return args
 
   def download(
-    self, 
-    compression: str, 
+    self,
+    compression: str,
     out_path: Optional[Path] = None,
     remove_compressed: bool = False
   ) -> Tuple[List[Path], List[Path], List[str]]:
-    
+
     # for each videoId, download subs in the same directory
     did_fail = []
     did_download = []
@@ -302,14 +338,16 @@ class ProcessHandler():
       args = self._prepare_args(videoId=_id, paths=_paths, out_path=out_path)
       _out_path = args.get("out_path")
 
+      print(f"Downloading subs for {_id} ({_paths[0]})...")
+
       try:
         # written = self.downloader.download(_id, out_path=_out_path)
         written = self.downloader.download(_id, args)
 
         if not written:
           log.warning(
-            f"Could not get filename written by {self.downloader.name} "
-            "from its stdout.")
+            f"No filename written for Id {_id} by {self.downloader.name} "
+            f"according to its stdout.")
           continue
         did_download.append(_id)
 
@@ -317,7 +355,7 @@ class ProcessHandler():
         print(f"Written subtitle file: \"{written}\".")
 
         compressed = compress(
-          written, in_fd=None, algo=compression, 
+          written, in_fd=None, algo=compression,
           on_success="remove" if remove_compressed else "nothing"
         )
         if compressed:
@@ -327,41 +365,34 @@ class ProcessHandler():
       except AlreadyPresentError:
         log.warning(
           f"File {_out_path} was already present according to {self.downloader.name}.")
-      except NotAvailableAnymore as e:
+      except (NotAvailableAnymore, NoSubsAvailable, Exception) as e:
+        print(f"Failed to download live chat for {_id}: {e}")
         log.warning(f"VideoId {_id} is not available anymore: {e}")
         did_fail.append(_id)
-        self.failed_cache.write(_id + "\t" + str(_paths[0]) + "\n")
-      except Exception as e:
-        log.exception(e)
-        did_fail.append(_id)
-        self.failed_cache.write(_id + "\t" + str(_paths[0]) + "\n")
+        self.failed_cache.write(_id + '\t' + str(_paths[0]) + '\t' + str(e) + "\n")
 
     return did_download, did_compress, did_fail
 
 
 class YoutubeHandler(ProcessHandler):
-  cached_name = "yt_" + ProcessHandler.cached_name
   cached_fail_name = "yt_" + ProcessHandler.cached_fail_name
   service_name = "Youtube"
 
   def __init__(self, *args, **kwargs) -> None:
     super().__init__(
-      regex=YoutubeRegex(), 
-      cache=CacheFile(Path(self.cached_name)), 
-      failed_cache=CacheFile(Path(self.cached_fail_name)), 
+      regex=YoutubeScanner(),
+      failed_cache=CacheFile(Path(self.cached_fail_name)),
       downloader=YoutubeDownload(cookies=kwargs.get("cookies")),
     )
 
 
 class TwitchHandler(ProcessHandler):
-  cached_name = "twitch_" + ProcessHandler.cached_name
   cached_fail_name = "twitch_" + ProcessHandler.cached_fail_name
   service_name = "Twitch"
 
   def __init__(self) -> None:
     super().__init__(
-      regex=TwitchRegex(), 
-      cache=CacheFile(Path(self.cached_name)), 
+      regex=TwitchScanner(),
       failed_cache=CacheFile(Path(self.cached_fail_name)),
       downloader=TwitchDownload()
     )
@@ -385,8 +416,8 @@ is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
 
 
 def compress_subs(
-  supplied_path: Path, 
-  compression: str, 
+  supplied_path: Path,
+  compression: str,
   remove_compressed: bool
 ) -> Generator[Optional[Path], None, None]:
   """
@@ -404,9 +435,9 @@ def compress_subs(
       fd.seek(0)
       try:
         yield compress(
-          f, 
-          fd, 
-          algo=compression, 
+          f,
+          fd,
+          algo=compression,
           on_success=("remove" if remove_compressed else "nothing")
         )
       except Exception as e:
@@ -423,12 +454,15 @@ def parse_args(args):
     '--compression', metavar='ALGO', type=str, choices=["bz2", "gz"], default="bz2",
     help='Type of compression to use')
   parser.add_argument(
-    '--service', metavar='SERV', type=str, 
+    '--service', metavar='SERV', type=str,
     choices=["youtube", "twitch", "all"], default="all",
     help='Services to scrape for.')
   parser.add_argument(
     '--output-path', metavar='OUTPATH', type=str, default=None,
     help='A directory where to put all downloaded subtitles.')
+  parser.add_argument(
+    '--exclude-regex', metavar='EXCLUDE', type=str, default=None,
+    help='Regex to filter out directories.')
   parser.add_argument(
     '--remove-compressed', action="store_true", default=False,
     help='Remove subtitle file after compression has succeeded.')
@@ -436,20 +470,57 @@ def parse_args(args):
     '--cookies', metavar="COOKIES", type=str, default=None,
     help='Path to cookie file to pass to downloaders (for members-only videos).')
   parser.add_argument(
+    '--log-level', metavar="LOG-LEVEL", type=str, default="WARNING",
+    help='Minimum log level to justify writing to log file on disk.')
+  parser.add_argument(
     'path', metavar='PATH', type=str,
     help='Path where to look up for files. This can be a directory in which case'
       ' we will scan for missing subtitle files. If this is a text file, each '
-      'line holds a videoId that will be downloaded in the current durectory.')
+      'line holds a videoId that will be downloaded in the current directory.')
   pargs = parser.parse_args(args)
   return pargs
 
 
+def setup_logger(
+  log_level: str = "WARNING",
+  output_path: Optional[Path] = None
+) -> None:
+  """
+  Add file handler to the global log object.
+  """
+  if not output_path:
+    output_path = Path() / ("subs.log")
+
+  level = getattr(logging, log_level.upper())
+
+  # logfile = logging.FileHandler(
+  #   filename=output_path, delay=True, encoding='utf-8'
+  # )
+  # logfile.setLevel(logging.DEBUG)
+  # formatter = logging.Formatter(
+  #   '%(asctime)s - %(levelname)s - %(name)s - %(message)s'
+  # )
+  # logfile.setFormatter(formatter)
+  # log.addHandler(logfile)
+  logging.basicConfig(
+    filename=output_path,
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+    level=level
+  )
+  log.setLevel(logging.DEBUG)
+
+
 def main(args=None) -> int:
-  pargs = parse_args(args)
+  pargs: argparse.Namespace = parse_args(args)
+  setup_logger(log_level=pargs.log_level)
+
+  filter_dir_re = None
+  if pargs.exclude_regex:
+    filter_dir_re = re.compile(pargs.exclude_regex, re.IGNORECASE)
 
   supplied_path = Path(pargs.path)
   if not supplied_path.exists():
-    log.warning("Supplied path doesn't exist.")
+    print("Supplied path doesn't exist.")
     return 1
 
   if pargs.mode == "download":
@@ -457,11 +528,12 @@ def main(args=None) -> int:
     else Path()
 
     if output_path.is_file():
-      log.warning(
+      # FIXME this file should be loaded instead!
+      print(
         f"{output_path} is an existing file. Will output to current working dir instead.")
       output_path = Path()
 
-    services = []
+    services: List[ProcessHandler] = []
     if pargs.service == "youtube":
       services.append(YoutubeHandler(cookies=pargs.cookies))
     elif pargs.service == "twitch":
@@ -471,9 +543,9 @@ def main(args=None) -> int:
       # and would return too many false positives
       services = [TwitchHandler(), YoutubeHandler(cookies=pargs.cookies)]
 
-    for root, f in crawl_files(supplied_path):
+    for root, f in crawl_files(supplied_path, filter_re=filter_dir_re):
       for search in services:
-        if search.regex.match(root, f):
+        if search.scanner.match(root, f):
           log.debug(f"{search.service_name} videoId found in {f}.")
           # Optimization: we had a match, skip any other lookup
           break
@@ -484,64 +556,39 @@ def main(args=None) -> int:
       print(f"Found {len(search.to_download)} {search.service_name} videoIds to download: ")
       for _id, _ in search.to_download.items():
         print(_id)
+
       log.debug(
-        f"{len(search.regex.store.keys())} files found by regexes: "
-        f"{pprint(search.regex.store)}.")
-      log.debug(f"{search.service_name} subs to download: {search.to_download}.")
-      
+        f"{len(search.scanner.store.keys())} files found by regexes: ")
+
+      # FIXME This assumes the logger has a FileHandler
+      with open(log.handlers[0].baseFilename, 'a') as f:
+        # Avoid printing to stdout, only to log file instead
+        original_stdout = sys.stdout
+        sys.stdout = f
+        pprint(search.scanner.store)
+        sys.stdout = original_stdout
+
+      log.debug(
+        f"{len(search.to_download)} {search.service_name} subs to download:\n" +
+        '\n'.join(f'{id}: {paths}' for id, paths in search.to_download.items())
+      )
+
+      if len(search.to_download) == 0:
+        continue
+
       # # DEBUG
       # continue
-      
-      # Load caches from disk if they exist
-      if search.cache.already_existed:
-        search._to_download = search.cache.load_lines()
-        log.debug(
-          f"Loaded from {search.cache.path.name} "
-          f"_to_download: {search._to_download}")
-
-      if search.failed_cache.already_existed:
-        search._failed_download = search.failed_cache.load_lines()
-        log.debug(
-          f"Loaded from {search.failed_cache.path.name} "
-          f"_failed_download: {search._failed_download}")
-        # Remove the file to avoid adding duplicates during this run, if we retry them
-        # search.failed_cache.path.unlink()
-
-      # FIXME do not redownload previously failed downloads and do not remove 
-      # the _failed_download file above; 
-      # instead have the user delete the file themselves if they
-      # really want to retry downloading previously failed downloads.
-      # Or maybe have them reame the file to _retry_download if they want to retry
-      # into the same paths.
-
-      # Overwrite todo list of videoIds to disks
-      with open(search.cache.path, 'w') as f:
-        # Filter out previously failed ids loaded from disk
-        if search._failed_download:  # _failed_download could be None
-          for _id, _path in search.to_download.items(): 
-            if _id not in search._failed_download.keys():
-              f.write(_id + "\t" + str(_path[0]) + "\n")
-        else:
-          for _id, _paths in search.to_download.items():
-            f.write(_id + "\t" + str(_paths[0]) + "\n")
 
       downloaded, compressed, failed = search.download(
-        compression=pargs.compression, 
+        compression=pargs.compression,
         out_path=output_path,
         remove_compressed=pargs.remove_compressed
-        )
+      )
 
-      print(f"Successfully downloaded {len(downloaded)} / "
-            f"{len(search.to_download)} subtitle files.")
-
-      # Flush remaining downloads to disk if any
-      # TODO intercept KILL signal and flush
-      if len(downloaded) != len(search.to_download):
-        with open(search.cache.path, 'w') as f:
-          for _id, _paths in search.to_download.items():
-            if _id not in failed and _id not in downloaded:
-              # Only store the first entry which should be enough to keep the date
-              f.write(_id + "\t" + str(_paths[0]) + "\n")
+      print(
+        f"Successfully downloaded {len(downloaded)} / "
+        f"{len(search.to_download)} subtitle files."
+      )
 
       if len(failed) > 0:
         print("Failed getting subtitles for these ids:")
@@ -555,15 +602,14 @@ def main(args=None) -> int:
 
   elif pargs.mode == "compress":
     for c in compress_subs(
-      supplied_path, 
-      compression=pargs.compression, 
+      supplied_path,
+      compression=pargs.compression,
       remove_compressed=pargs.remove_compressed
     ):
       if c is not None:
         print(f"Written {c}")
-  
+
   return 0
 
 if __name__ == "__main__":
-  logging.basicConfig()
   exit(main())

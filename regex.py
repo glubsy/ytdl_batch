@@ -69,11 +69,11 @@ twitch_sub_file_pattern = (
 )
 
 
-class BaseRegex():
+class BaseScanner():
   def __init__(self) -> None:
     # Record path to files found
     # First list in Tuple is found media files
-    # SEcond list in Tuple is found subs files
+    # Second list in Tuple is found subs files
     self.store: DefaultDict[str, Tuple[List[Path], List[Path]]] = \
       defaultdict(lambda: ([],[]))
 
@@ -90,7 +90,7 @@ class BaseRegex():
         yield key, paths[0]
 
 
-class YoutubeRegex(BaseRegex):
+class YoutubeScanner(BaseScanner):
   regex = re.compile(yt_recording_file_pattern, re.IGNORECASE)
 
   def match(self, root: str, filename: str) -> bool:
@@ -112,7 +112,7 @@ class YoutubeRegex(BaseRegex):
     return True
 
 
-class TwitchRegex(BaseRegex):
+class TwitchScanner(BaseScanner):
   vid_regex = re.compile(twitch_video_file_pattern, re.IGNORECASE)
   # Format is usually YYYYMMDD_twitchId
   subt_regex =  re.compile(twitch_sub_file_pattern, re.IGNORECASE)
