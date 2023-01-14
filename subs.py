@@ -139,14 +139,7 @@ class YoutubeDownload(DownloadHandler):
 
   def download(self, videoId: str, kwargs) -> Optional[Path]:
     """Call yt-dlp on videoId. Return the path to the written file."""
-    cmd = ytdl.get_cmd(videoId, cookies=self.cookies)  # use COOKIE_PATH here if needed
-    cmd.insert(-1, "--skip-download")
-    cmd.insert(-1, "--no-write-thumbnail")
-    # We don't need thumbnails for subtitle-only downloads
-    try:
-      cmd.remove("--embed-thumbnail")
-    except:
-      pass
+    cmd = ytdl.build_cmd(videoId, cookies=self.cookies, skip_video=True)  # use COOKIE_PATH here if needed
     out_path = kwargs.get("out_path")
 
     log.debug(f"Running download method: {cmd}, out_path: {out_path}.")
