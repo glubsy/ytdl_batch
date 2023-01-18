@@ -164,7 +164,7 @@ class YoutubeDownload(DownloadHandler):
           return Path(filename)
         if "Video subtitle live_chat.json is already present" in line:
           raise AlreadyPresentError()
-        if "no subtitles for the requested language":
+        if "no subtitles for the requested language" in line:
           raise NoSubsAvailable("No subtitles available for the requested language.")
 
     except CalledProcessError as e:
