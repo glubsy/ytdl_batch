@@ -54,6 +54,7 @@ def build_cmd(videoId: str, cookies: Optional[Path] = None, skip_video=True):
         "--skip-download",
         "--write-subs",
         "--sub-langs", "live_chat",
+        "-o", "%(upload_date)s %(uploader)s %(title)s_%(id)s.%(ext)s",
       ]
     )
 
