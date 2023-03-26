@@ -1,10 +1,10 @@
 #!/bin/env python3
-from os import walk, sep
+from os import walk, sep, getenv
 from os.path import join as pjoin
 import sys
 import re
 from pathlib import Path
-from typing import Optional, List, Dict, Generator, Tuple, Any
+from typing import Optional, List, Dict, Generator, Tuple, Any, Union
 import argparse
 import gzip
 import bz2
@@ -12,11 +12,10 @@ import shutil
 from pprint import pprint
 # import fileinput
 import logging
-from downloader import twitch, ytdl
 from subprocess import run, CalledProcessError
-from regex import (
-  BaseScanner, TwitchScanner, YoutubeScanner,
-)
+from regex import BaseScanner, TwitchScanner, YoutubeScanner
+from downloader.twitch import TwitchDownloaderCLI
+from downloader.ytdl import YTDLDownloader
 
 log = logging.getLogger()
 # log.setLevel(logging.DEBUG)
@@ -122,89 +121,97 @@ def crawl_files(
       yield root, f
 
 
-class DownloadHandler():
-  name = None
+# class DownloadHandler():
+#   name = None
 
-  def __init__(self, *args, **kwargs) -> None:
-    self.cookies: Optional[Path] = None
-    if cookies := kwargs.get("cookies"):
-      self.cookies = Path(cookies).expanduser()
+#   def __init__(self, *args, **kwargs) -> None:
+#     self.process = None
+#     self.cookies: Optional[Path] = None
+#     if cookies := kwargs.get("cookies"):
+#       self.cookies = Path(cookies).expanduser()
 
-  def download(self, videoId: str, kwargs) -> Optional[Path]:
-    raise NotImplementedError
-
-
-class YoutubeDownload(DownloadHandler):
-  name = "yt-dlp"
-
-  def download(self, videoId: str, kwargs) -> Optional[Path]:
-    """Call yt-dlp on videoId. Return the path to the written file."""
-    cmd = ytdl.build_cmd(videoId, cookies=self.cookies, skip_video=True)  # use COOKIE_PATH here if needed
-    out_path = kwargs.get("out_path")
-
-    log.debug(f"Running download method: {cmd}, out_path: {out_path}.")
-
-    try:
-      proc = run(
-        cmd, cwd=out_path, # check=True,
-        capture_output=True, text=True, encoding="utf-8")
-      # log.debug(f"Ran command {proc.args}. CWD: {out_path}")
-
-      if proc.returncode != 0:
-        log.warning(f"{proc.args} returned status code {proc.returncode}")
-        if "members-only content" in proc.stderr:
-          raise NeedCookies("Member-only content. Valid cookies are required.")
-
-        log.debug(f"STDERR:\n{proc.stderr}")
-        raise Exception(f"Status code: {proc.returncode}")
-
-      for line in proc.stdout.splitlines():
-        if "Writing video subtitles to:" in line:
-          filename = line.split(":")[-1].strip()
-          return Path(filename)
-        if "Video subtitle live_chat.json is already present" in line:
-          raise AlreadyPresentError()
-        if "no subtitles for the requested language" in line:
-          raise NoSubsAvailable("No subtitles available for the requested language.")
-
-    except CalledProcessError as e:
-      log.exception(e)
+#   def download(self, videoId: str, kwargs) -> Optional[Path]:
+#     raise NotImplementedError
 
 
-class TwitchDownload(DownloadHandler):
-  name = "TwitchDownloaderCLI"
+# class YoutubeDownload(DownloadHandler):
 
-  # TODO parse cookies file and pass only the oauth value as self.cookies
+#   def __init__(self, *args, **kwargs) -> None:
+#     super().__init__(*args, **kwargs)
+#     self.process = YTDLDownloader(process_path=kwargs.get("process_path"))
 
-  def download(self, videoId: str, kwargs) -> Optional[Path]:
-    if not videoId:
-      raise Exception(f"No videoId submitted: {videoId}")
+#   def download(self, videoId: str, kwargs) -> Optional[Path]:
+#     """Call yt-dlp on videoId. Return the path to the written file."""
+#     # use COOKIE_PATH here if needed
+#     cmd = self.process.build_cmd(videoId, cookies=self.cookies, skip_video=True)
+#     out_path = kwargs.get("out_path")
 
-    cmd = twitch.get_subs_cmd(videoId, kwargs)
-    out_path = kwargs.get("out_path")
+#     log.debug(f"Running download method: {cmd}, out_path: {out_path}.")
 
-    log.debug(f"Running command: {cmd}, out_path: {out_path}")
+#     try:
+#       proc = run(
+#         cmd, cwd=out_path, # check=True,
+#         capture_output=True, text=True, encoding="utf-8")
+#       # log.debug(f"Ran command {proc.args}. CWD: {out_path}")
 
-    proc = run(
-      cmd, cwd=out_path, # check=True,
-      capture_output=True, text=True, encoding="utf-8")
+#       if proc.returncode != 0:
+#         log.warning(f"{proc.args} returned status code {proc.returncode}")
+#         if "members-only content" in proc.stderr:
+#           raise NeedCookies("Member-only content. Valid cookies are required.")
 
-    if proc.returncode != 0:
-      log.warning(f"{proc.args} returned status code {proc.returncode}")
-      if proc.returncode == -6 or proc.returncode == 134:
-        reason = f"Return code was: {proc.returncode}"
-        if "(404) Not Found." in proc.stderr:
-          reason = "404 not found."
-        elif "Object reference not set to an instance of an object." in proc.stderr:
-          reason = "Object reference not set to an instance of an object."
-        raise NotAvailableAnymore(reason)
+#         log.debug(f"STDERR:\n{proc.stderr}")
+#         raise Exception(f"Status code: {proc.returncode}")
 
-      log.debug(f"STDERR:\n{proc.stderr}")
-      raise Exception(f"Status code: {proc.returncode}")
+#       for line in proc.stdout.splitlines():
+#         if "Writing video subtitles to:" in line:
+#           filename = line.split(":")[-1].strip()
+#           return Path(filename)
+#         if "Video subtitle live_chat.json is already present" in line:
+#           raise AlreadyPresentError()
+#         if "no subtitles for the requested language" in line:
+#           raise NoSubsAvailable("No subtitles available for the requested language.")
 
-    # Last item should be the output filename
+#     except CalledProcessError as e:
+#       log.exception(e)
 
-    return out_path / Path(cmd[-1]) if out_path is not None else Path(cmd[-1])
+
+# class TwitchDownload(DownloadHandler):
+
+#   def __init__(self, *args, **kwargs) -> None:
+#     super().__init__(*args, **kwargs)
+#     self.process = TwitchDownloaderCLI(process_path=kwargs.get("process_path"))
+
+#   # TODO parse cookies file and pass only the oauth value as self.cookies
+
+#   def download(self, videoId: str, kwargs) -> Optional[Path]:
+#     if not videoId:
+#       raise Exception(f"No videoId submitted: {videoId}")
+
+#     cmd = self.process.get_subs_cmd(videoId, kwargs)
+#     out_path = kwargs.get("out_path")
+
+#     log.debug(f"Running command: {cmd}, out_path: {out_path}")
+
+#     proc = run(
+#       cmd, cwd=out_path, # check=True,
+#       capture_output=True, text=True, encoding="utf-8")
+
+#     if proc.returncode != 0:
+#       log.warning(f"{proc.args} returned status code {proc.returncode}")
+#       if proc.returncode == -6 or proc.returncode == 134:
+#         reason = f"Return code was: {proc.returncode}"
+#         if "(404) Not Found." in proc.stderr:
+#           reason = "404 not found."
+#         elif "Object reference not set to an instance of an object." in proc.stderr:
+#           reason = "Object reference not set to an instance of an object."
+#         raise NotAvailableAnymore(reason)
+
+#       log.debug(f"STDERR:\n{proc.stderr}")
+#       raise Exception(f"Status code: {proc.returncode}")
+
+#     # Last item should be the output filename
+
+#     return out_path / Path(cmd[-1]) if out_path is not None else Path(cmd[-1])
 
 
 class CacheFile():
@@ -251,11 +258,15 @@ class CacheFile():
 class ProcessHandler():
   cached_fail_name = "subs_failed.txt"
   service_name = ""
+  downloader = None
 
   def __init__(self, *args, **kwargs) -> None:
+    self.cookies: Optional[Path] = None
+    if cookies := kwargs.get("cookies"):
+      self.cookies = Path(cookies).expanduser()
+
     self.scanner: BaseScanner = kwargs["regex"]
     self.failed_cache: CacheFile = kwargs["failed_cache"]
-    self.downloader: DownloadHandler = kwargs["downloader"]
     self._to_download: Optional[Dict] = None
     self._failed_download: Dict = {}
 
@@ -288,7 +299,7 @@ class ProcessHandler():
       (
         (_id, ids[_id][0])
         for _id in ids.keys()
-        # Only load Ids that do not have subs files attached already (at index 1)
+        # Only load Ids that do not have any associated subs files already (at index 1)
         if (len(ids[_id][1]) == 0 and len(ids[_id][0]) > 0)
         and _id not in self._failed_download.keys()
       )
@@ -316,6 +327,10 @@ class ProcessHandler():
     }
     return args
 
+  def _download(self, id, args):
+    # virtual
+    raise NotImplementedError()
+
   def download(
     self,
     compression: str,
@@ -335,11 +350,11 @@ class ProcessHandler():
 
       try:
         # written = self.downloader.download(_id, out_path=_out_path)
-        written = self.downloader.download(_id, args)
+        written = self._download(_id, args)
 
         if not written:
           log.warning(
-            f"No filename written for Id {_id} by {self.downloader.name} "
+            f"No filename written for Id {_id} by {self.downloader.default_name} "
             f"according to its stdout.")
           continue
         did_download.append(_id)
@@ -357,7 +372,8 @@ class ProcessHandler():
 
       except AlreadyPresentError:
         log.warning(
-          f"File {_out_path} was already present according to {self.downloader.name}.")
+          f"File {_out_path} was already present according to "
+          f"{self.downloader.default_name}.")
       except (NotAvailableAnymore, NoSubsAvailable, Exception) as e:
         print(f"Failed to download live chat for {_id}: {e}")
         log.warning(f"VideoId {_id} is not available anymore: {e}")
@@ -374,21 +390,65 @@ class YoutubeHandler(ProcessHandler):
   def __init__(self, *args, **kwargs) -> None:
     super().__init__(
       regex=YoutubeScanner(),
-      failed_cache=CacheFile(Path(self.cached_fail_name)),
-      downloader=YoutubeDownload(cookies=kwargs.get("cookies")),
+      failed_cache=CacheFile(Path(self.cached_fail_name))
     )
+    self.downloader = YTDLDownloader(process_path=kwargs["process_path"])
+    
+    self.cookies: Optional[Path] = None
+    if cookies := kwargs.get("cookies"):
+      self.cookies = Path(cookies).expanduser()
+
+  def _download(self, videoId: str, kwargs) -> Optional[Path]:
+    """Call yt-dlp on videoId. Return the path to the written file."""
+    # use COOKIE_PATH here if needed
+    cmd = self.downloader.build_cmd(
+      videoId, cookies=self.cookies, skip_video=True
+    )
+    out_path = kwargs.get("out_path")
+
+    log.debug(f"Running download method: {cmd}, out_path: {out_path}.")
+
+    try:
+      proc = run(
+        cmd, cwd=out_path, # check=True,
+        capture_output=True, text=True, encoding="utf-8")
+      # log.debug(f"Ran command {proc.args}. CWD: {out_path}")
+
+      if proc.returncode != 0:
+        log.warning(f"{proc.args} returned status code {proc.returncode}")
+        if "members-only content" in proc.stderr:
+          raise NeedCookies("Member-only content. Valid cookies are required.")
+
+        log.debug(f"STDERR:\n{proc.stderr}")
+        raise Exception(f"Status code: {proc.returncode}")
+
+      for line in proc.stdout.splitlines():
+        if "Writing video subtitles to:" in line:
+          filename = line.split(":")[-1].strip()
+          return Path(filename)
+        if "Video subtitle live_chat.json is already present" in line:
+          raise AlreadyPresentError()
+        if "no subtitles for the requested language" in line:
+          raise NoSubsAvailable("No subtitles available for the requested language.")
+
+    except CalledProcessError as e:
+      log.exception(e)
 
 
 class TwitchHandler(ProcessHandler):
   cached_fail_name = "twitch_" + ProcessHandler.cached_fail_name
   service_name = "Twitch"
 
-  def __init__(self) -> None:
+  def __init__(self, *args, **kwargs) -> None:    
     super().__init__(
       regex=TwitchScanner(),
       failed_cache=CacheFile(Path(self.cached_fail_name)),
-      downloader=TwitchDownload()
     )
+    self.downloader = TwitchDownloaderCLI(process_path=kwargs["process_path"])
+    
+    self.cookies: Optional[Path] = None
+    if cookies := kwargs.get("cookies"):
+      self.cookies = Path(cookies).expanduser()
 
   def _prepare_args(self, videoId, paths, out_path) -> Dict:
     # Method override to add the date
@@ -401,6 +461,36 @@ class TwitchHandler(ProcessHandler):
         return args
       args["date"] = _date
     return args
+
+  def _download(self, videoId: str, kwargs) -> Optional[Path]:
+    if not videoId:
+      raise Exception(f"No videoId submitted: {videoId}")
+
+    cmd = self.downloader.build_cmd(videoId, kwargs)
+    out_path = kwargs.get("out_path")
+
+    log.debug(f"Running command: {cmd}, out_path: {out_path}")
+
+    proc = run(
+      cmd, cwd=out_path, # check=True,
+      capture_output=True, text=True, encoding="utf-8")
+
+    if proc.returncode != 0:
+      log.warning(f"{proc.args} returned status code {proc.returncode}")
+      if proc.returncode == -6 or proc.returncode == 134:
+        reason = f"Return code was: {proc.returncode}"
+        if "(404) Not Found." in proc.stderr:
+          reason = "404 not found."
+        elif "Object reference not set to an instance of an object." in proc.stderr:
+          reason = "Object reference not set to an instance of an object."
+        raise NotAvailableAnymore(reason)
+
+      log.debug(f"STDERR:\n{proc.stderr}")
+      raise Exception(f"Status code: {proc.returncode}")
+
+    # Last item should be the output filename
+
+    return out_path / Path(cmd[-1]) if out_path is not None else Path(cmd[-1])
 
 
 # cf. https://stackoverflow.com/questions/898669
@@ -466,6 +556,9 @@ def parse_args(args):
     '--log-level', metavar="LOG-LEVEL", type=str, default="WARNING",
     help='Minimum log level to justify writing to log file on disk.')
   parser.add_argument(
+    '--dry-run', action="store_true",
+    help='Only print what is done but do not download anything.')
+  parser.add_argument(
     'path', metavar='PATH', type=str,
     help='Path where to look up for files. This can be a directory in which case'
       ' we will scan for missing subtitle files. If this is a text file, each '
@@ -516,6 +609,14 @@ def main(args=None) -> int:
     print("Supplied path doesn't exist.")
     return 1
 
+  yt_downloader_path = getenv("YTDL")
+  if not yt_downloader_path:
+    print("No Youtube downloader found in env variable \"YTDL\"!")
+
+  twitch_downloader_path = getenv("TDCLI")
+  if not twitch_downloader_path:
+    print("No Twitch downloader found in env variable \"TDCLI\"!")
+
   if pargs.mode == "download":
     output_path = Path(pargs.output_path) if pargs.output_path is not None \
     else Path()
@@ -523,18 +624,22 @@ def main(args=None) -> int:
     if output_path.is_file():
       # FIXME this file should be loaded instead!
       print(
-        f"{output_path} is an existing file. Will output to current working dir instead.")
+        f"{output_path} is an existing file. Will output to current working "
+        "directory instead.")
       output_path = Path()
 
+    # HACK it is important that Twitch handler be first because Youtube's 
+    # regex is greedier and would return too many false positives
     services: List[ProcessHandler] = []
-    if pargs.service == "youtube":
-      services.append(YoutubeHandler(cookies=pargs.cookies))
-    elif pargs.service == "twitch":
-      services.append(TwitchHandler())
-    else:  # all
-      # It's important that twitch is first because youtube's regex is greedier
-      # and would return too many false positives
-      services = [TwitchHandler(), YoutubeHandler(cookies=pargs.cookies)]
+
+    if pargs.service == "twitch" or "all":
+      services.append(TwitchHandler(
+        cookies=pargs.cookies, process_path=twitch_downloader_path)
+      )
+    if pargs.service == "youtube" or "all":
+      services.append(YoutubeHandler(
+        cookies=pargs.cookies, process_path=yt_downloader_path)
+      )
 
     for root, f in crawl_files(supplied_path, filter_re=filter_dir_re):
       for search in services:
@@ -569,8 +674,8 @@ def main(args=None) -> int:
       if len(search.to_download) == 0:
         continue
 
-      # # DEBUG
-      # continue
+      if pargs.dry_run:
+        continue
 
       downloaded, compressed, failed = search.download(
         compression=pargs.compression,

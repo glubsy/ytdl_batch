@@ -1,11 +1,10 @@
-from pathlib import Path
 from types import NoneType
 import logging
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
-from regex import TwitchScanner, YoutubeScanner
-from conftest import *
+from ytdl_batch.regex import TwitchScanner, YoutubeScanner
+from .conftest import *
 
 
 def flatten(defaultdict, convert_to=str):

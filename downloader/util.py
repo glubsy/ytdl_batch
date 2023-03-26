@@ -4,7 +4,7 @@ from pathlib import Path
 from os.path import expanduser
 
 
-def setup_handler(default_proc: str, path: Optional[str]) -> Optional[str]:
+def find_program(default_proc: str, path: Optional[str]) -> Optional[str]:
   """
   Check whether default_proc is available in PATH. If it is not, try to lookup
   at *path* and return if found, otherwise return None.

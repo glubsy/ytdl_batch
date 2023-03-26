@@ -8,6 +8,8 @@ log = logging.getLogger()
 
 media_exts = ["webm", "mkv", "mp4", "m4a", "opus"]
 media_extensions_re = f"{'|'.join(e for e in media_exts)}"
+# Expecting a date between [], 
+# otherwise the date is a simple YYYYMMDD at the start of the filename
 base_yt_video_file_pattern = r'.*\][\s_]?(?P<id>[0-9A-Za-z_-]{11})\.'
 yt_video_file_pattern = (
   base_yt_video_file_pattern
@@ -34,9 +36,9 @@ def sub_extensions(base_sub_name: str) -> List:
   if base_sub_name:
     base_sub_name = base_sub_name + "."
   return [
-    f"{base_sub_name}json", 
-    f"{base_sub_name}json.gz", 
-    f"{base_sub_name}json.bz2", 
+    f"{base_sub_name}json",
+    f"{base_sub_name}json.gz",
+    f"{base_sub_name}json.bz2",
     "json"  # FIXME not sure about this one
   ]
 
@@ -87,6 +89,7 @@ class BaseScanner():
   def to_download(self):
     for key, paths in self.store.items():
       if len(paths[1]) == 0:
+        # There is no found subs files, return the path to the media file
         yield key, paths[0]
 
 
@@ -97,18 +100,22 @@ class YoutubeScanner(BaseScanner):
     match = self.regex.match(filename)
     if not match:
       return False
+
     # The second group should match the extension (this check might not be necessary)
     if len(match.groups()) < 2:
-      log.warning(f"Failed to match second capture group for {filename}: {match}.")
+      log.warning(f"{__class__} failed to match second capture group for {filename}: {match}.")
       return False
+
     _id = match.group("id")
     if not _id:
       return False
+
     # Add to the list of media files or the list of subtitles depending on
     # the type of extension detected.
     self.store[_id][1 if match.group("extension") in yt_sub_exts else 0]\
       .append(Path(Path(root) / Path(filename)))
-    log.debug(f"Found youtube media file {filename} against {self.regex}")
+    log.debug(f"{__class__} found youtube media file {filename}")
+
     return True
 
 
@@ -120,29 +127,32 @@ class TwitchScanner(BaseScanner):
   def match(self, root: str, filename: str) -> bool:
     match = self.subt_regex.match(filename)
     if match is not None:
-      log.debug(f"Matched twitch sub file {filename} against {self.subt_regex}")
+      log.debug(f"{__class__} matched twitch sub file {filename}")
       # if not match.group("extension"):
       #   log.debug("No extension matched. Trying again for media file...")
       #   pass
       _id = match.group("id")
       self.store[_id][1].append(Path(Path(root) / Path(filename)))
       return True
-    log.debug(f"No match for {filename} against {self.subt_regex}.")
-    
+    log.debug(f"{__class__} no sub file match for {filename}")
+
     # We may have mutliple twitchIds in the same filename, hence the iteration
     vid_match = self.vid_regex.finditer(filename)
     if vid_match:
       found = False
       for m in vid_match:
-        log.debug(f"Matched twitch video file {filename} against {self.vid_regex}: {m}")
+        log.debug(f"{__class__} matched twitch video file {filename}: {m}")
         _id = m.group("id")
+
         if not _id:
           continue
+
         _ext = m.group("extension")
-        log.debug(f"Extension for {filename} in {self.vid_regex}: {_ext}.")
+        log.debug(f"{__class__} extension for {filename}: {_ext}.")
         # if not _ext:
         #   continue
         # _date = m.group("date")
+
         self.store[_id][0]\
           .append(
             Path(Path(root) / Path(filename))

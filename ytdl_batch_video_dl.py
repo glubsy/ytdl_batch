@@ -9,6 +9,11 @@ from downloader import ytdl
 from constants import SFX, py_ver_tuple
 
 
+# NOTE this module is probably partially obsolete since yt-dlp can work
+# with archive.txt files
+# TODO rework this to leverage that feature
+
+
 def play_sound(key: str) -> None:
   """snd_path is a key in SFX dict."""
   snd_pathstr = SFX.get(key, None)
