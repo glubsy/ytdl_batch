@@ -1,4 +1,5 @@
 from types import NoneType
+from unittest import TestCase
 import logging
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
@@ -51,3 +52,23 @@ def test_regexes():
       if type(test_case) in (TwitchVideo, TwitchSub) \
       else YoutubeScanner
     assert_matched(lookup=test_case, regex_type=_type)
+
+
+class TestTwitchRegex(TestCase):
+
+  def test_multiple_ids(self):
+    # All Ids should be detected
+    filename = "20220210 [Matsuro Meru] EAT EAT EAT EAT EAT nuggie & appo juice #016 [270]_v1293952620_v1294022479.mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1293952620", scanner.store.keys())
+    self.assertIn("1294022479", scanner.store.keys())
+  
+  def test_multiple_ids_no_v(self):
+    # An Id without "v" should also be detected
+    filename = "20220210 [Matsuro Meru] EAT EAT EAT EAT EAT nuggie & appo juice #016 [270]_v1293952620_v1294022479_1234567890.mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1293952620", scanner.store.keys())
+    self.assertIn("1294022479", scanner.store.keys())
+    self.assertIn("1234567890", scanner.store.keys())
