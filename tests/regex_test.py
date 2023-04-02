@@ -72,3 +72,28 @@ class TestTwitchRegex(TestCase):
     self.assertIn("1293952620", scanner.store.keys())
     self.assertIn("1294022479", scanner.store.keys())
     self.assertIn("1234567890", scanner.store.keys())
+
+  def test_bracket_around_author(self):
+    filename = "20230323 [Amaris Yuri] drawing stickers [180]_1773634033.mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
+
+
+class TestYoutubeIdDetection(TestCase):
+
+  def test_sub_file_detected(self):
+    # youtube Id should be detected
+    filename = "20230127 Purin 【Project Zomboid】Play with me~ ：3_Emb76dePufw.live_chat.json"
+    scanner = YoutubeScanner()
+    scanner.match(root=".", filename=filename)
+    self.assertIn("Emb76dePufw", scanner.store.keys())
+    self.assertIn("Emb76dePufw", scanner.store["Emb76dePufw"][1][0].name)
+
+  def test_compressed_file_detected(self):
+    filename = "20230127 Purin 【Project Zomboid】Play with me~ ：3_Emb76dePufw.live_chat.json.bz2"
+    scanner = YoutubeScanner()
+    scanner.match(root=".", filename=filename)
+    self.assertIn("Emb76dePufw", scanner.store.keys())
+    self.assertIn("Emb76dePufw", scanner.store["Emb76dePufw"][1][0].name)

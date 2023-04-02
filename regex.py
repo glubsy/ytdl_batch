@@ -10,8 +10,7 @@ media_exts = ["webm", "mkv", "mp4", "m4a", "opus"]
 media_extensions_re = f"{'|'.join(e for e in media_exts)}"
 # Expecting a date between [], 
 # otherwise the date is a simple YYYYMMDD at the start of the filename
-# FIXME [360p] is not part of sub filename anymore
-base_yt_video_file_pattern = r'.*\][\s_]?(?P<id>[0-9A-Za-z_-]{11})\.'
+base_yt_video_file_pattern = r'.*[\s_]?(?P<id>[0-9A-Za-z_-]{11})\.'
 yt_video_file_pattern = (
   base_yt_video_file_pattern
   + r'(?P<extension>'
