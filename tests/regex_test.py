@@ -63,7 +63,7 @@ class TestTwitchRegex(TestCase):
     self.assertTrue(scanner.match(".", filename))
     self.assertIn("1293952620", scanner.store.keys())
     self.assertIn("1294022479", scanner.store.keys())
-  
+
   def test_multiple_ids_no_v(self):
     # An Id without "v" should also be detected
     filename = "20220210 [Matsuro Meru] EAT EAT EAT EAT EAT nuggie & appo juice #016 [270]_v1293952620_v1294022479_1234567890.mp4"
@@ -78,6 +78,36 @@ class TestTwitchRegex(TestCase):
     scanner = TwitchScanner()
     self.assertTrue(scanner.match(".", filename))
     self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
+
+  def test_bracket_around_id(self):
+    filename = "20230323 [Amaris Yuri] drawing stickers [180][1773634033].mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
+
+  def test_bracket_around_id_v_prefix(self):
+    filename = "20230323 [Amaris Yuri] drawing stickers [180][v1773634033].mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
+
+  def test_bracket_around_multiple_ids(self):
+    filename = "20230323 [Amaris Yuri] drawing stickers [180][v1773634033_v1234567890].mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("1234567890", scanner.store.keys())
+    self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
+
+  def test_bracket_around_multiple_ids_no_v(self):
+    filename = "20230323 [Amaris Yuri] drawing stickers [180][1773634033_v1234567890].mp4"
+    scanner = TwitchScanner()
+    self.assertTrue(scanner.match(".", filename))
+    self.assertIn("1773634033", scanner.store.keys())
+    self.assertIn("1234567890", scanner.store.keys())
     self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
 
 
@@ -97,3 +127,17 @@ class TestYoutubeIdDetection(TestCase):
     scanner.match(root=".", filename=filename)
     self.assertIn("Emb76dePufw", scanner.store.keys())
     self.assertIn("Emb76dePufw", scanner.store["Emb76dePufw"][1][0].name)
+
+  def test_compressed_file_detected_bracket_around_id(self):
+    filename = "20230127 Purin 【Project Zomboid】Play with me~ ：3 [Emb76dePufw].live_chat.json.bz2"
+    scanner = YoutubeScanner()
+    scanner.match(root=".", filename=filename)
+    self.assertIn("Emb76dePufw", scanner.store.keys())
+    self.assertIn("Emb76dePufw", scanner.store["Emb76dePufw"][1][0].name)
+
+  def test_media_detected(self):
+    filename = "20230330 [Gawr Gura Ch. hololive-EN] 【MINECRAFT】i love minecraft [240p][dh4s0bBrPx0].mp4"
+    scanner = YoutubeScanner()
+    scanner.match(root=".", filename=filename)
+    self.assertIn("dh4s0bBrPx0", scanner.store.keys())
+    self.assertIn("dh4s0bBrPx0", scanner.store["dh4s0bBrPx0"][0][0].name)

@@ -30,7 +30,7 @@ class YTDLDownloader():
           "--fragment-retries", "50",
           "--abort-on-unavailable-fragment",
           # "-k",
-          "-o", "%(upload_date)s %(uploader)s %(title)s_[%(height)s]_%(id)s.%(ext)s",
+          "-o", "%(upload_date)s [%(uploader)s] %(title)s [%(height)s][%(id)s].%(ext)s",
           # "--print", "filename",  # print filename output according to template
           "-ciw",
           #"--cookies", COOKIE_PATH,
@@ -52,7 +52,7 @@ class YTDLDownloader():
           "--skip-download",
           "--write-subs",
           "--sub-langs", "live_chat",
-          "-o", "%(upload_date)s %(uploader)s %(title)s_%(id)s.%(ext)s",
+          "-o", "%(upload_date)s [%(uploader)s] %(title)s [%(id)s].%(ext)s",
         ]
       )
 
