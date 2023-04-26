@@ -31,7 +31,9 @@ class TwitchDownloaderCLI():
       str(self.handle),
       "chatdownload",
       "--id", videoId,
+      "-E",
       "-o", str(output_path)
     ]
+
     # TODO pass in oauth value from cookies
     return cmd
