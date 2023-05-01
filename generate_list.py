@@ -66,7 +66,6 @@ def do_request(url, headers=None, method="POST", data=None):
 def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
   # Each tuple returned has (videoId, status)
   vids = []
-  total = 0
   has_next = True
   cursor = None
   params = {
@@ -85,7 +84,6 @@ def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
 
     has_next = _json.get("hasNext")
     cursor = _json.get("cursor")
-    total = _json.get("total")
     for vid in _json.get("list"):
       print(
         f"{vid['videoId']}"
@@ -94,9 +92,6 @@ def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
       vids.append(
         (vid["videoId"], vid.get("status"))
       )
-
-  if total != len(vids):
-    print(f"WARNING: playboard advertised {total} videos but only returned {len(vids)}.")
 
   return vids
 
@@ -112,6 +107,7 @@ def main(channel_id: str):
 
   date = datetime.now().strftime("%d%m%Y_%H-%M-%S")
   videos_file = f"playboard_ids_{channel_id}_{date}.txt"
+
   with open(videos_file, "w") as f:
     for _id, _ in videos:
       f.write(_id + "\n")
