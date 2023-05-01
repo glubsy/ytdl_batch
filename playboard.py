@@ -4,7 +4,9 @@
 # html element, then use:
 # grep --color=never -rioP 'href="/en/video/(.*){11}"' computed_page.html | sed -n -r 's#.*href="/en/video/([^"]*).*#\1#p' > video_ids_reversed.txt
 # tac video_ids_reversed.txt > video_ids.txt
-# TODO Fetch videos from Youtube and compare with what playboard returns
+#
+# TODO Fetch videos from Youtube and compare with what playboard returns (could 
+# use yt-dlp to generate archive.txt without downloading for example)
 
 from sys import argv
 from typing import List, Tuple
