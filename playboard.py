@@ -1,23 +1,23 @@
 #!/bin/env python3
 #
-# To create a list of Youtube video IDs from playboard.co by copying the root 
+# To create a list of Youtube video IDs from playboard.co by copying the root
 # html element, then use:
 # grep --color=never -rioP 'href="/en/video/(.*){11}"' computed_page.html | sed -n -r 's#.*href="/en/video/([^"]*).*#\1#p' > video_ids_reversed.txt
 # tac video_ids_reversed.txt > video_ids.txt
 #
-# TODO Fetch videos from Youtube and compare with what playboard returns (could 
-# use yt-dlp to generate archive.txt without downloading for example: 
+# TODO Fetch videos from Youtube and compare with what playboard returns (could
+# use yt-dlp to generate archive.txt without downloading for example:
 # --flat-playlist Do not extract the videos of a playlist, only list them
 
 from sys import argv
-from typing import List, Tuple
+from typing import List, Mapping
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode, quote, urlparse
 import json
 import gzip
 from io import BytesIO
 import logging
-from datetime import datetime
+from datetime import datetime, date
 log = logging.getLogger(__name__)
 logging.basicConfig()
 # log.setLevel(logging.DEBUG)
@@ -66,16 +66,16 @@ def do_request(url, headers=None, method="POST", data=None):
     return json.loads(content)
 
 
-def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
-  # Each tuple returned has (videoId, status)
-  vids = []
+def get_videos_for_channel(channel_id: str):
+  """
+  Generator of video mappings from Playboard.
+  """
   has_next = True
   cursor = None
   params = {
     "channelId": channel_id,
     "sortTypeId": "10",
   }
-  print("Found videoIds:")
 
   while has_next:
     if cursor is not None:
@@ -87,40 +87,51 @@ def get_videos_for_channel(channel_id: str) -> List[Tuple[str, int]]:
 
     has_next = _json.get("hasNext")
     cursor = _json.get("cursor")
+
     for vid in _json.get("list"):
-      print(
-        f"{vid['videoId']}"
-        + (' (deleted)' if vid.get('status') == 2 else "")
-      )
-      vids.append(
-        (vid["videoId"], vid.get("status"))
-      )
-
-  return vids
+      yield vid
 
 
-def main(channel_id: str):
-  videos = get_videos_for_channel(channel_id)
+def generate_lists(channel_id: str):
+  print(f"Finding video Ids in Playboard for channel \"{channel_id=}\":")
+
+  pb_videos = []
+
+  for vid in get_videos_for_channel(channel_id):
+    pb_videos.append(vid)
+
+    title = vid.get("title")
+    publishedAt = vid.get("publishedAt")
+    if publishedAt is not None and type(publishedAt) is int:
+      publishedAt = date.fromtimestamp(publishedAt)
+
+    print(
+      f"{vid['videoId']}"
+      + ("\t(deleted)" if vid.get("status") == 2 else '')
+      + (f"\tpublished={str(publishedAt)}" if publishedAt is not None else '')
+      + (f"\t{title=}" if title is not None else '')
+    )
 
   # "2" seems to indicate removed?, "1" and "3" appear to be the same?
-  possibly_removed = [v for v,s in videos if s == 2]
+  possibly_removed = [v["videoId"] for v in pb_videos if v["status"] == 2]
 
-  print(f"Found {len(videos)} IDs, among which {len(possibly_removed)} "
-        "are advertised as being deleted.")
+  print(
+    f"Found {len(pb_videos)} IDs, among which {len(possibly_removed)} "
+    "are advertised as being deleted.")
 
-  date = datetime.now().strftime("%Y%d%m_%H-%M-%S")
-  videos_file = f"playboard_ids_{channel_id}_{date}.txt"
+  date_fmt = datetime.now().strftime("%Y%d%m_%H-%M-%S")
+  videos_file = f"playboard_ids_{channel_id}_{date_fmt}.txt"
 
   with open(videos_file, "w") as f:
-    for _id, _ in videos:
+    for _id, _ in pb_videos:
       f.write(_id + "\n")
 
   if possibly_removed:
-    deleted_file = f"playboard_ids_{channel_id}_deleted_{date}.txt"
+    deleted_file = f"playboard_ids_{channel_id}_deleted_{date_fmt}.txt"
     with open(deleted_file, "w") as f:
       for _id in possibly_removed:
         f.write(_id + "\n")
 
 
-if __name__ == "__main__": 
-  main(argv[1])
+if __name__ == "__main__":
+  generate_lists(argv[1])
