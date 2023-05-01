@@ -6,7 +6,8 @@
 # tac video_ids_reversed.txt > video_ids.txt
 #
 # TODO Fetch videos from Youtube and compare with what playboard returns (could 
-# use yt-dlp to generate archive.txt without downloading for example)
+# use yt-dlp to generate archive.txt without downloading for example: 
+# --flat-playlist Do not extract the videos of a playlist, only list them
 
 from sys import argv
 from typing import List, Tuple
@@ -107,7 +108,7 @@ def main(channel_id: str):
   print(f"Found {len(videos)} IDs, among which {len(possibly_removed)} "
         "are advertised as being deleted.")
 
-  date = datetime.now().strftime("%d%m%Y_%H-%M-%S")
+  date = datetime.now().strftime("%Y%d%m_%H-%M-%S")
   videos_file = f"playboard_ids_{channel_id}_{date}.txt"
 
   with open(videos_file, "w") as f:
