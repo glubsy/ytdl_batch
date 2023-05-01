@@ -86,13 +86,18 @@ def main(target_path):
   with open("ids_found_on_disk.txt", "w") as f:
       for _id in ids:  # reversed: ids[::-1]:
           print(_id)
-          f.write(_id + '\n')
+          f.write("youtube " + _id + '\n')
   print(f"Total found: {len(ids)}.")
 
-  print(f"{len(misses)} mismatched files + {len(dupes)} dupes = {len(misses) + len(dupes)}:")
+  print(f"{len(misses)} mismatched files + {len(dupes)} dupes = {len(misses) + len(dupes)} ignored files.")
+
+  print("Files that failed to match regex:")
   for miss in misses:
     print(miss)
 
+  print("Duplicate files according to their Id:")
+  for dupe in dupes:
+    print(dupe)
 
 if __name__ == "__main__":
   main(argv[1])
