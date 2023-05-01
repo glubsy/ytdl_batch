@@ -119,12 +119,12 @@ def generate_lists(channel_id: str):
     f"Found {len(pb_videos)} IDs, among which {len(possibly_removed)} "
     "are advertised as being deleted.")
 
-  date_fmt = datetime.now().strftime("%Y%d%m_%H-%M-%S")
+  date_fmt = datetime.now().strftime("%Y%d%m")
   videos_file = f"playboard_ids_{channel_id}_{date_fmt}.txt"
 
   with open(videos_file, "w") as f:
-    for _id, _ in pb_videos:
-      f.write(_id + "\n")
+    for _vid in pb_videos:
+      f.write(_vid["videoId"] + "\n")
 
   if possibly_removed:
     deleted_file = f"playboard_ids_{channel_id}_deleted_{date_fmt}.txt"

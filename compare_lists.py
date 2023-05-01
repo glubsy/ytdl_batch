@@ -51,5 +51,5 @@ def compare(list1, list2, list3=None):
             print(_id)
 
 
-if __name__ == "__main__": 
-  compare(argv[1], argv[2], argv[3])
+if __name__ == "__main__":
+    compare(argv[1], argv[2], argv[3] if len(argv) > 3 else None)
