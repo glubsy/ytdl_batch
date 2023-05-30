@@ -266,7 +266,7 @@ class ProcessHandler():
           continue
         did_download.append(_id)
 
-        written = _out_path / written if _out_path is not None else Path() / written
+        written = Path() / written if type(written) is str else written.absolute()
         print(f"Written subtitle file: \"{written}\".")
 
         compressed = compress(
