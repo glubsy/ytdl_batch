@@ -20,7 +20,8 @@ yt_video_file_pattern = (
 
 # Use re.findall on this
 # date_capture = r'(?:(?P<date>[0-9]{8})\s+.*?)?'
-base_twitch_video_file_pattern = r'(?:[\s_\[]?v?(?P<id>[0-9]{10}))+?\]?'
+# We rely on the guarantee that we have a [video_res] part
+base_twitch_video_file_pattern = r'(?:.*[\s_]?\[.*\])?\[?(?:[_+]?v?(?P<id>[0-9]{10}))+?\]?'
 twitch_video_file_pattern = (
   base_twitch_video_file_pattern
   + r'|(?:\.' # don't capture the period of the extension

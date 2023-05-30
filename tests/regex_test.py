@@ -110,6 +110,80 @@ class TestTwitchRegex(TestCase):
     self.assertIn("1234567890", scanner.store.keys())
     self.assertIn("Amaris Yuri", scanner.store.get("1773634033")[0][0].name)
 
+  def test_fake_id_in_title_parametrized(self):
+    # Examples (although tested prefixes apply to all ids):
+    # 20230525 [author] barbazrb GAWME :3333333333 [best][1829043411].mp4
+    # 20230525 [author] barbazrb GAWME :3333333333 [best]_1829043411.mp4
+    # 20230525 [author] barbazrb GAWME :3333333333 [best]_v1829043411.mp4
+    # 20230525 [author] barbazrb GAWME :3333333333 [1080]_v1829043411.mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][1829043411].mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][1829043411_1245364899].mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][v1829043411+v1245364899].mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][v1829043411_v1245364899].mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][v1829043411_v1245364899_1245364899].mp4
+    # 20230525 [author] barbazrb eeevvvvvw :3333333333 ezvezqev [best][v1829043411+1245364899+v1245364899].mp4
+
+    base_filename = "20230525 [author] barbazrb GAWME :3333333333 "
+    extra_title = ("", "fnck ", "fnck the mafia ")
+    quality = ("best", "1080", "720")
+    id_separator = ("_", "+")
+    id_prefix = ("v", "")
+    ids = ["1829043411", "1829043400", "1822043422"]
+    extension = ("mp4", )
+    for slice_len in range(1, len(ids) + 1):
+        for et in extra_title:
+          for q in quality:
+            for idp in id_prefix:
+              slice = ids[:slice_len]
+              slice_prefixed = []
+              for slice_item in slice:
+                slice_prefixed.append(f"{idp}{slice_item}")
+              for ext in extension:
+                # test with bracket enclosure around ids
+                if len(slice) > 1:
+                  for sep in id_separator:
+                    filename = f"{base_filename}{et}[{q}][{sep.join(slice_prefixed)}].{ext}"
+                    print(filename)
+                    with self.subTest():
+                      scanner = TwitchScanner()
+                      self.assertTrue(scanner.match(".", filename))
+                      for sliced in slice:
+                        self.assertIn(sliced, scanner.store.keys())
+                        self.assertIn("author", scanner.store.get(sliced)[0][0].name)
+                      self.assertNotIn("3333333333", scanner.store.keys())
+                  
+                    # test with not enclosure around ids
+                    filename = f"{base_filename}{et}[{q}]_{sep.join(slice_prefixed)}.{ext}"
+                    print(filename)
+                    with self.subTest():
+                      scanner = TwitchScanner()
+                      self.assertTrue(scanner.match(".", filename))
+                      for sliced in slice:
+                        self.assertIn(sliced, scanner.store.keys())
+                        self.assertIn("author", scanner.store.get(sliced)[0][0].name)
+                      self.assertNotIn("3333333333", scanner.store.keys())
+                else:
+                    filename = f"{base_filename}{et}[{q}][{slice[0]}].{ext}"
+                    print(filename)
+                    with self.subTest():
+                      scanner = TwitchScanner()
+                      self.assertTrue(scanner.match(".", filename))
+                      for sliced in slice:
+                        self.assertIn(sliced, scanner.store.keys())
+                        self.assertIn("author", scanner.store.get(sliced)[0][0].name)
+                      self.assertNotIn("3333333333", scanner.store.keys())
+
+                    # test with not enclosure around ids
+                    filename = f"{base_filename}{et}[{q}]_{slice[0]}.{ext}"
+                    print(filename)
+                    with self.subTest():
+                      scanner = TwitchScanner()
+                      self.assertTrue(scanner.match(".", filename))
+                      for sliced in slice:
+                        self.assertIn(sliced, scanner.store.keys())
+                        self.assertIn("author", scanner.store.get(sliced)[0][0].name)
+                      self.assertNotIn("3333333333", scanner.store.keys())
+
 
 class TestYoutubeIdDetection(TestCase):
 
