@@ -331,8 +331,14 @@ class YoutubeHandler(ProcessHandler):
 
       for line in proc.stdout.splitlines():
         if "Writing video subtitles to:" in line:
-          filename = line.split(":")[-1].strip()
-          return Path(filename)
+          filename = line.split("Writing video subtitles to:")[-1].strip()
+          fp = Path(filename).absolute()
+          if fp.exists():
+            return fp
+          # fallback to getting path from input
+          if out_path:
+            return Path() / out_path / filename
+          return Path() / filename
         if "Video subtitle live_chat.json is already present" in line:
           raise AlreadyPresentError()
         if "no subtitles for the requested language" in line:
