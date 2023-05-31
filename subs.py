@@ -335,6 +335,7 @@ class YoutubeHandler(ProcessHandler):
           fp = Path(filename).absolute()
           if fp.exists():
             return fp
+          logging.debug(f"Incorrect filepath returned by downloader: {fp}")
           # fallback to getting path from input
           if out_path:
             return Path() / out_path / filename
