@@ -15,8 +15,13 @@
 #
 #
 
-# Load config variables
-source ./move_ts.config
+# Load config variables, assuming it is located in the same directory as this script
+config_file="${0%/*}/transcode_ts.config"
+if [[ ! -e "${config_file}" ]]; then
+	echo "Missing config file ${config_file}"
+	exit 1
+fi
+source "${config_file}"
 
 MAX_TIME_DIFF=10  # minutes
 TS_EXT="ts"  # file extension to look for
@@ -67,14 +72,14 @@ for orig dest in "${(@kv)destinations}"; do
 			echo "Will transcode to: $dest/$dest_filename"
 			
 			echo "ffmpeg -i $f -c copy $dest/$dest_filename"
-			"ffmpeg -i $f -c copy $dest/$dest_filename"
+			ffmpeg -i "${f}" -c copy "${dest}/${dest_filename}"
 			# DEBUG
 			#ffprobe $f
 
 			if [[ $? -eq 0 ]] && [[ ! -e "$dest/$dest_filename" ]]; then
 				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
 				echo "Removing $f from source..."
-				echo "rm $f"
+				#echo "rm $f"
 			else
 				mkdir -p "$dest"
 				mv "$f" "$dest/$filename)"
