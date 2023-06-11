@@ -29,6 +29,11 @@ RESET="\u001b[0m"
 
 # Scan for ts files and transcode them into destination
 for orig dest in "${(@kv)destinations}"; do
+	if [[ ! -d "${orig}" ]]; then
+		echo "${YELLOW}$orig does not exist. Skipping.${RESET}"
+		continue
+	fi
+
 	echo "Scanning for files to move from $orig -> $dest"
 
 	# (N) glob qualifier equivalent to "setopt null_glob" to avoid getting a (blocking) error if no file is found
