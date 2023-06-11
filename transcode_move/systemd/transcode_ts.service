@@ -4,7 +4,7 @@ Description=Transcode remote TS files into locally stored MP4 files
 [Service]
 Type=oneshot
 ExecStart=/opt/system_scripts/transcode_move/transcode_ts.sh
-DependsOn=remote-do.mount
+BindsTo=remote-do.mount
 
 [Install]
 WantedBy=multi-user.target
