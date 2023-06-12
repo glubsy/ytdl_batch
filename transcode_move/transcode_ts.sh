@@ -77,7 +77,7 @@ for orig dest in "${(@kv)destinations}"; do
 			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
 				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
 				echo "Removing $f from source..."
-				echo "rm $f"
+				rm $f
 			else
 				echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}. Trying to move source file instead of transcoding...${RESET}"
 				mkdir -p "$dest"
