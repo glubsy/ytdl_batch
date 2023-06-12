@@ -1,6 +1,6 @@
 [Unit]
 Description=Transcode remote TS files into locally stored MP4 files
-BindsTo=remote-do.mount
+Wants=remote-do.mount
 
 [Service]
 Type=oneshot
