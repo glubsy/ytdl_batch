@@ -71,7 +71,7 @@ for orig dest in "${(@kv)destinations}"; do
 			dest_filename="${filename%.ts}.mp4"
 			echo "Will transcode to: $dest/$dest_filename"
 			
-			echo "ffmpeg -i $f -c copy $dest/$dest_filename"
+			echo "Running: ffmpeg -i $f -c copy $dest/$dest_filename"
 			ffmpeg -i "${f}" -c copy "${dest}/${dest_filename}"
 			# DEBUG
 			#ffprobe $f
@@ -79,14 +79,15 @@ for orig dest in "${(@kv)destinations}"; do
 			if [[ $? -eq 0 ]] && [[ ! -e "$dest/$dest_filename" ]]; then
 				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
 				echo "Removing $f from source..."
-				#echo "rm $f"
+				echo "rm $f"
 			else
+				echo "${YELLOW}ffmpeg encountered an error. Trying to move source file instead of transcoding...${RESET}"
 				mkdir -p "$dest"
 				mv "$f" "$dest/$filename)"
 			        if [[ $? -eq 0 ]]; then
-					echo "Moved $f to $dest/$filename instead of transcoding!"
+					echo "${YELLOW}Moved $f to $dest/$filename instead of transcoding!${RESET}"
 				else
-					echo "${RED}Something went wrong trying to move $f to $dest/$filename${RESET}"
+					echo "${RED}Something went wrong trying to move ${f} to ${dest}/${filename}. Please investigate!${RESET}"
 				fi
 			fi
 		else
