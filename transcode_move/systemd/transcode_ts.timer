@@ -3,14 +3,13 @@ Description=Schedule transcode_ts every 20 minutes
 RefuseManualStart=no
 RefuseManualStop=no
 
-
 [Timer]
 #Execute job if it missed a run due to machine being off
 Persistent=true
 #Run 120 seconds after boot for the first time
 OnBootSec=120
-#Run every 1 minute thereafter
-OnUnitActiveSec=60 * 20
+#Run every 20 minute thereafter
+OnUnitActiveSec=20min
 #File describing job to execute
 Unit=transcode_ts.service
 
