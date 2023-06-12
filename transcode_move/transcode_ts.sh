@@ -39,12 +39,12 @@ for orig dest in "${(@kv)destinations}"; do
 		continue
 	fi
 
-	echo "Scanning for files to move from $orig -> $dest"
+	# echo "Scanning for files to move from $orig -> $dest"
 
 	# (N) glob qualifier equivalent to "setopt null_glob" to avoid getting a (blocking) error if no file is found
 	for f in ${orig}/*.${TS_EXT}(N); do
 		filename="$(basename $f)"
-		echo "Found ${TS_EXT} file: $filename";
+		# echo "Found ${TS_EXT} file: $filename";
 
 		# Have to make sure the file is not being written to currently
 		
