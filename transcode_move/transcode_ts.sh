@@ -57,7 +57,7 @@ for orig dest in "${(@kv)destinations}"; do
 		size_bytes=${stat_data[@]:1:2}     # same as ${stat_data[2]}
 
 		if [[ ${size_bytes} -le 1000 ]]; then
-			echo "${YELLOW}$filename is ${size_bytes} bytes, too small to be a valid media file. Ignoring...${RESET}"
+			echo "${YELLOW}${orig}/${filename} is ${size_bytes} bytes, too small to be a valid media file. Ignoring...${RESET}"
 			continue
 		fi
 
