@@ -75,13 +75,14 @@ for orig dest in "${(@kv)destinations}"; do
 			ffmpeg -i "${f}" -c copy "${dest}/${dest_filename}"
 			# DEBUG
 			#ffprobe $f
+			ffmpeg_exit=$?
 
-			if [[ $? -eq 0 ]] && [[ ! -e "$dest/$dest_filename" ]]; then
+			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ ! -e "$dest/$dest_filename" ]]; then
 				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
 				echo "Removing $f from source..."
 				echo "rm $f"
 			else
-				echo "${YELLOW}ffmpeg encountered an error. Trying to move source file instead of transcoding...${RESET}"
+				echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}. Trying to move source file instead of transcoding...${RESET}"
 				mkdir -p "$dest"
 				mv "$f" "$dest/$filename"
 			        if [[ $? -eq 0 ]]; then
