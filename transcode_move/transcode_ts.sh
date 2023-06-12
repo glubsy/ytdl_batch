@@ -70,9 +70,10 @@ for orig dest in "${(@kv)destinations}"; do
 			
 			dest_filename="${filename%.ts}.mp4"
 			echo "Will transcode to: $dest/$dest_filename"
-			
-			echo "Running: ffmpeg -i $f -c copy $dest/$dest_filename"
-			ffmpeg -i "${f}" -c copy "${dest}/${dest_filename}"
+
+			cmd="ffmpeg -hide_banner -y -i -nostats -ignore_unknown "${f}" -c copy "${dest}/${dest_filename}""
+			echo "Running ${cmd}"
+			eval ${cmd}
 			# DEBUG
 			#ffprobe $f
 			ffmpeg_exit=$?
