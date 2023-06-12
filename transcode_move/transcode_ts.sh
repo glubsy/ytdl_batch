@@ -69,13 +69,9 @@ for orig dest in "${(@kv)destinations}"; do
 			#echo "DEBUG stat\n$(stat ${f})"
 			
 			dest_filename="${filename%.ts}.mp4"
-			echo "Will transcode to: $dest/$dest_filename"
+			echo "Transcoding to: $dest/$dest_filename"
 
-			cmd="ffmpeg -hide_banner -y -nostats -ignore_unknown -i ${f} -c copy ${dest}/${dest_filename}"
-			echo "Running ${cmd}"
-			eval "${cmd}"
-			# DEBUG
-			#ffprobe $f
+			ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}"
 			ffmpeg_exit=$?
 
 			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
