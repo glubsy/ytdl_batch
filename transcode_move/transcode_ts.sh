@@ -83,7 +83,7 @@ for orig dest in "${(@kv)destinations}"; do
 			else
 				echo "${YELLOW}ffmpeg encountered an error. Trying to move source file instead of transcoding...${RESET}"
 				mkdir -p "$dest"
-				mv "$f" "$dest/$filename)"
+				mv "$f" "$dest/$filename"
 			        if [[ $? -eq 0 ]]; then
 					echo "${YELLOW}Moved $f to $dest/$filename instead of transcoding!${RESET}"
 				else
