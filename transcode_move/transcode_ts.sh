@@ -78,7 +78,7 @@ for orig dest in "${(@kv)destinations}"; do
 			#ffprobe $f
 			ffmpeg_exit=$?
 
-			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ ! -e "$dest/$dest_filename" ]]; then
+			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
 				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
 				echo "Removing $f from source..."
 				echo "rm $f"
