@@ -543,6 +543,8 @@ def main(args=None) -> int:
       with open(ignored_file, 'r') as f:
         for line in f.readlines():
           ignored_set.add(line.strip())
+      if ignored_set:
+        print(f"Loaded {len(ignored_set)} Ids to ignore from {ignored_file}")
 
     if output_path.is_file():
       # FIXME this file should be loaded instead!
