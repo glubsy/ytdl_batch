@@ -4,7 +4,7 @@ from os.path import join as pjoin
 import sys
 import re
 from pathlib import Path
-from typing import Optional, List, Dict, Generator, Tuple, Any, Union
+from typing import Optional, List, Dict, Generator, Tuple, Any, Union, MutableSet
 import argparse
 import gzip
 import bz2
@@ -176,6 +176,7 @@ class ProcessHandler():
     self.failed_cache: CacheFile = kwargs["failed_cache"]
     self._to_download: Optional[Dict] = None
     self._failed_download: Dict = {}
+    self._ignored: MutableSet[str] = kwargs.get("ignored", set())
 
     if self.failed_cache.already_existed:
       self._failed_download = self.failed_cache.load_lines()
@@ -209,6 +210,7 @@ class ProcessHandler():
         # Only load Ids that do not have any associated subs files already (at index 1)
         if (len(ids[_id][1]) == 0 and len(ids[_id][0]) > 0)
         and _id not in self._failed_download.keys()
+        and _id not in self._ignored
       )
     )
     return self._to_download
@@ -533,7 +535,14 @@ def main(args=None) -> int:
 
   if pargs.mode == "download":
     output_path = Path(pargs.output_path) if pargs.output_path is not None \
-    else Path()
+      else Path()
+
+    ignored_file = Path("ignored_subs.txt")
+    ignored_set = set()
+    if ignored_file.exists():
+      with open(ignored_file, 'r') as f:
+        for line in f.readlines():
+          ignored_set.add(line.strip())
 
     if output_path.is_file():
       # FIXME this file should be loaded instead!
@@ -548,11 +557,17 @@ def main(args=None) -> int:
 
     if pargs.service == "twitch" or "all":
       services.append(TwitchHandler(
-        cookies=pargs.cookies, process_path=twitch_downloader_path)
+          cookies=pargs.cookies, 
+          process_path=twitch_downloader_path,
+          ignored=ignored_set
+        )
       )
     if pargs.service == "youtube" or "all":
       services.append(YoutubeHandler(
-        cookies=pargs.cookies, process_path=yt_downloader_path)
+          cookies=pargs.cookies, 
+          process_path=yt_downloader_path,
+          ignored=ignored_set
+        )
       )
 
     for root, f in crawl_files(supplied_path, filter_re=filter_dir_re):
