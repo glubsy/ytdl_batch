@@ -15,11 +15,17 @@
 #
 #
 
-# Load config variables, assuming it is located in the same directory as this script
-config_file="${0%/*}/transcode_ts.config"
+config_file="${TS_CONFIG:="${HOME}/.config/transcode_ts.config"}"
+
 if [[ ! -e "${config_file}" ]]; then
 	echo "Missing config file ${config_file}"
-	exit 1
+
+	# Load config variables, assuming it is located in the same directory as this script
+	config_file="${0%/*}/transcode_ts.config"
+	if [[ ! -e "${config_file}" ]]; then
+		echo "Missing config file ${config_file}"
+		exit 1
+	fi
 fi
 source "${config_file}"
 
