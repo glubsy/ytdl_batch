@@ -9,11 +9,9 @@ Download videoIds listed by `generate_list.py`
 
 Use the playboard.co API to get a list of videoIds for a given channel. Their scraped data is useful to figure out which videos have been deleted from the targeted Youtube channel.
 
-
 # Subs.py
 
-Scan a given directory for Youtube and Twitch video files (looking for Id patterns) and download subtitles for each found video.
-If a subtitle file is found in the same directory, skip that video.
+Scan a given directory for Youtube and Twitch video files (looking for Id in file names) and download subtitles for each found video.
 
 ```shell
 usage: subs.py [-h] --mode MODE [--compression ALGO] [--service SERV] [--output-path OUTPATH] [--exclude-regex EXCLUDE] [--remove-compressed] [--cookies COOKIES] [--log-level LOG-LEVEL] PATH
@@ -39,6 +37,21 @@ options:
                         Minimum log level to justify writing to log file on disk.
 ```
 
+The expected pattern for both Youtube and Twitch video files is 
+```
+date [author_name] stream title [resolution width][video Id].extension`
+```
+Example of Youtube video file name:
+```
+20230726 [Komachi Panko] working at a Haunted Pizzeria [360][uSIOTJLqPLg].mp4
+```
+Example of Twitch video file name:
+```
+20240422 [vedal987] experimental neuro stream [best][2120650204].mp4
+```
+Expected video file extensions are webm, mkv, mp4, m4a, opus.
+
+
 ### Usage
 
 Point to the programs expected to do the downloading for us:
@@ -62,3 +75,5 @@ subs.py --mode "download" --remove-compressed --log-level DEBUG --exclude-regex 
 ### TODO
 
 * Pass cookies for members-only videos, especially for Twitch. Currently, the downloader has to be called separately with the appropriate argument.
+* Decouple the file collecting logic. This step should be a separate script, and the subs.py script should not scan anything, only accept a list of file paths as input.
+* Youtube and Twitch processing should be split into two separate scripts
