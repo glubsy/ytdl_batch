@@ -7,10 +7,13 @@ Download videoIds listed by `generate_list.py`
 
 # generate_list.py
 
-Use playboard to get a list of videoIds for a channel.
+Use the playboard.co API to get a list of videoIds for a given channel. Their scraped data is useful to figure out which videos have been deleted from the targeted Youtube channel.
 
 
 # Subs.py
+
+Scan a given directory for Youtube and Twitch video files (looking for Id patterns) and download subtitles for each found video.
+If a subtitle file is found in the same directory, skip that video.
 
 ```shell
 usage: subs.py [-h] --mode MODE [--compression ALGO] [--service SERV] [--output-path OUTPATH] [--exclude-regex EXCLUDE] [--remove-compressed] [--cookies COOKIES] [--log-level LOG-LEVEL] PATH
@@ -38,25 +41,24 @@ options:
 
 ### Usage
 
-
+Point to the programs expected to do the downloading for us:
 ```shell
-export TDCLI="/path/to/TwitchDownloaderCLI_1.51.1"
-export YTDL="/path/to/yt-dlp/yt-dlp.sh"
+export TDCLI="/path/to/TwitchDownloaderCLI"
+export YTDL="/path/to/yt-dlp"
 ```
 
-Download subtitle files for each videoId found.
-
+Download subtitles for each video Id found in `/target` and all its subdirectories:
 ```shell
-subs.py --mode "download" --remove-compressed --cookies ~/Cookies/cookies.txt /target
-subs.py --mode "compress" --remove-compressed --cookies ~/Cookies/cookies.txt /target
+python ./subs.py --mode "download" --remove-compressed --cookies ~/Cookies/cookies.txt /target
 ```
+
+The `"compress"` mode is not very useful, as it is equivalent to calling your preferred compression program on all JSON files, i.e. `bzip2 **/*.json`. It is kept as convenience in case of a crash mid-process, to rerun the same logic.
 
 Example:
-
 ```shell
-subs.py --mode "download" --remove-compressed --log-level DEBUG --exclude-regex ".*/MISC/.*|.*/dox/.*" /path/to/directory
+subs.py --mode "download" --remove-compressed --log-level DEBUG --exclude-regex ".*/excluded/.*|.*/another_excluded/.*" /path/to/downloaded_videos
 ```
 
 ### TODO
 
-* Pass cookies for members-only videos (Twitch handler in subs)
+* Pass cookies for members-only videos, especially for Twitch. Currently, the downloader has to be called separately with the appropriate argument.
