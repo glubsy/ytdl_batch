@@ -30,6 +30,8 @@ class TwitchDownloaderCLI():
     cmd = [
       str(self.handle),
       "chatdownload",
+      "--banner", "false",
+      "--collision", "exit",
       "--id", videoId,
       "-E",
       "-o", str(output_path)
