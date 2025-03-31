@@ -1,8 +1,8 @@
 #!/bin/bash
 # This script compares the files in a source directory with the files in multiple check directories.
 # If a file in the source directory does not exist in any of the check directories, it is copied to a destination directory.
-# Usage: ./rsync_compare_move.sh [--dry-run] <source_dir> <dest_dir> <check_dir1> [<check_dir2> ...] [--copy-path <specific_path>]
-# Example: ./rsync_compare_move.sh [--dry-run] /path/to/source/ /path/to/destination/ /path/to/check1 /path/to/check2 --copy-path /specific/path
+# Usage: ./rsync_compare_copy.sh [--dry-run] <source_dir> <dest_dir> <check_dir1> [<check_dir2> ...] [--copy-path <specific_path>]
+# Example: ./rsync_compare_copy.sh [--dry-run] /path/to/source/ /path/to/destination/ /path/to/check1 /path/to/check2 --copy-path /specific/path
 #
 # The --dry-run flag can be used to simulate the script without actually copying files.
 # The --copy-path flag can be used to specify a specific path to copy the files to instead of the destination directory.
