@@ -3,7 +3,7 @@
 # If a file in the source directory does not exist in any of the check directories, it is copied to a destination directory.
 # Usage: ./rsync_compare_move.sh [--dry-run] <source_dir> <dest_dir> <check_dir1> [<check_dir2> ...] [--copy-path <specific_path>]
 # Example: ./rsync_compare_move.sh [--dry-run] /path/to/source/ /path/to/destination/ /path/to/check1 /path/to/check2 --copy-path /specific/path
-# 
+#
 # The --dry-run flag can be used to simulate the script without actually copying files.
 # The --copy-path flag can be used to specify a specific path to copy the files to instead of the destination directory.
 # The script uses rsync to compare the files in the source directory with the files in the check directories.
@@ -74,6 +74,8 @@ while read -r line; do
   if [[ "$line" =~ ^">" ]]; then
     # Extract the filename from the rsync output
     filename=$(echo "$line" | awk '{sub(/^[^ ]+ +/, ""); print $0}')
+    # Extract only the basename (filename without parent directories)
+    basename=$(basename "$filename")
     file_list+=("$filename")
   fi
 done < <(eval "$RSYNC_COMMAND")
@@ -83,32 +85,38 @@ IFS=$OLD_IFS
 # FIXME there might be an issue where the filename contains a parent directory
 # such as for example: parent/filename.ext
 # in this case, the script will not be able to find the file in the check directories
+# because it will look for parent/filename.ext instead of just filename.ext
 
 for file in "${file_list[@]}"; do
   # Filename without the extension
   base_name="${file%.*}"
+  extension="${file##*.}" # Extract the file extension
 
-  # Check if the file exists in any of the check directories
+  matches=$(find "${CHECK_DIRS[@]}" -type f -name "$base_name.*" 2>/dev/null)
+
   file_exists=false
   existing_file_path=""
   conflicting_file=false
   conflicting_files=()
-  for dir in "${CHECK_DIRS[@]}"; do
-    # Check if the exact file exists in the directory or its subdirectories
-    existing_path=$(find "$dir" -type f -name "$file" 2>/dev/null)
-    if [[ -n "$existing_path" ]]; then
+
+  # Parse the results of find
+  while IFS= read -r match; do
+    # Extract the extension of the found file
+    found_extension="${match##*.}"
+
+    # Check if the found file has the same extension
+    if [[ "$found_extension" == "$extension" ]]; then
       file_exists=true
-      existing_file_path="$existing_path"
+      existing_file_path="$match"
       break
     fi
 
-    # Check for conflicting files with the same base name but different extensions
-    matches=$(find "$dir" -type f -name "$base_name.*" 2>/dev/null)
-    if [[ -n "$matches" ]]; then
+    # If the found file has a different extension, mark it as a conflict
+    if [[ "$found_extension" != "$extension" ]]; then
       conflicting_file=true
-      conflicting_files+=("$matches")
+      conflicting_files+=("$match")
     fi
-  done
+  done <<< "$matches"
 
   # If the file exists, print its exact path and skip copying
   if [[ "$file_exists" == true ]]; then
@@ -119,7 +127,7 @@ for file in "${file_list[@]}"; do
 
   # If a conflicting file exists, print a warning and skip copying
   if [[ "$conflicting_file" == true ]]; then
-    echo "${WARNING}This file appears to already exist with a different extension:${RESET}"
+    echo -e "${YELLOW}This file appears to already exist with a different extension:${RESET}"
     for conflict in "${conflicting_files[@]}"; do
       echo "  $file -> $conflict"
     done
@@ -132,8 +140,8 @@ for file in "${file_list[@]}"; do
     TARGET_DIR="$COPY_PATH"
   fi
 
-  echo -e "${GREEN}Copying $file to $TARGET_DIR${RESET}"
+  echo -e "${GREEN}Copying "$SOURCE_DIR$file" to $TARGET_DIR${RESET}"
   if [[ "$DRY_RUN" == false ]]; then
-    cp -vn --parents "$SOURCE_DIR/$file" "$TARGET_DIR/"
+    cp -vn "$SOURCE_DIR$file" "$TARGET_DIR/"
   fi
 done
