@@ -80,31 +80,46 @@ done < <(eval "$RSYNC_COMMAND")
 
 IFS=$OLD_IFS
 
+# FIXME there might be an issue where the filename contains a parent directory
+# such as for example: parent/filename.ext
+# in this case, the script will not be able to find the file in the check directories
+
 for file in "${file_list[@]}"; do
   # Filename without the extension
   base_name="${file%.*}"
 
   # Check if the file exists in any of the check directories
   file_exists=false
+  existing_file_path=""
   conflicting_file=false
   conflicting_files=()
   for dir in "${CHECK_DIRS[@]}"; do
-    if [[ -e "$dir/$file" ]]; then
+    # Check if the exact file exists in the directory or its subdirectories
+    existing_path=$(find "$dir" -type f -name "$file" 2>/dev/null)
+    if [[ -n "$existing_path" ]]; then
       file_exists=true
+      existing_file_path="$existing_path"
       break
     fi
 
     # Check for conflicting files with the same base name but different extensions
-    matches=$(compgen -G "$dir/$base_name.*")
+    matches=$(find "$dir" -type f -name "$base_name.*" 2>/dev/null)
     if [[ -n "$matches" ]]; then
       conflicting_file=true
       conflicting_files+=("$matches")
     fi
   done
 
+  # If the file exists, print its exact path and skip copying
+  if [[ "$file_exists" == true ]]; then
+    echo -e "Skipping as it already exists at:"
+    echo -e "  $file -> $existing_file_path${RESET}"
+    continue
+  fi
+
   # If a conflicting file exists, print a warning and skip copying
   if [[ "$conflicting_file" == true ]]; then
-    echo "Warning: Skipping this file as it appears to already exist:"
+    echo "${WARNING}This file appears to already exist with a different extension:${RESET}"
     for conflict in "${conflicting_files[@]}"; do
       echo "  $file -> $conflict"
     done
