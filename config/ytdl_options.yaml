@@ -1,0 +1,50 @@
+# yt-dlp download options configuration
+
+# Options for full video download (skip_video=False)
+video_download:
+  common_options:
+    - "--exec"
+    - "echo"
+    - "--embed-thumbnail"
+    - "-N"
+    - "4"
+    - "-4"
+    - "--fragment-retries"
+    - "50"
+    - "--abort-on-unavailable-fragment"
+    - "-ciw"
+    - "--add-metadata"
+    - "--write-subs"
+    - "--embed-subs"
+    - "--remux-video"
+    - "mkv"
+  
+  output_template: "%(upload_date)s [%(uploader)s] %(title)s [%(height)s][%(id)s].%(ext)s"
+  
+  format_options:
+    format: "bestvideo[vcodec^=avc1]+bestaudio"
+    sort: "+res:240,res:360,vcodec:avc01"
+  
+  subtitle_options:
+    langs: "live_chat"
+    # Uncomment below if JSON live_chat conversion is needed
+    # convert_format: "srt"
+
+  # Optional: Uncomment to enable these features
+  # concurrent_fragments: "2"
+  # extractor_args: "youtube:player_client=android"
+  # sleep_interval: "5"
+  # throttled_rate: "3000"
+  # external_downloader: "aria2c"
+  # external_downloader_args: "-c -j 3 -x 3 -s 3 -k 1M"
+
+# Options for chat-only download (skip_video=True)
+chat_only:
+  common_options:
+    - "--skip-download"
+    - "--write-subs"
+  
+  output_template: "%(upload_date)s [%(uploader)s] %(title)s [%(id)s].%(ext)s"
+  
+  subtitle_options:
+    langs: "live_chat"
