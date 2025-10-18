@@ -86,7 +86,7 @@ def main(target_path):
   with open("ids_found_on_disk.txt", "w") as f:
       for _id in ids:  # reversed: ids[::-1]:
           print(_id)
-          f.write("youtube " + _id + '\n')
+          f.write("youtube.com " + _id + '\n')
   print(f"Total found: {len(ids)}.")
 
   print(f"{len(misses)} mismatched files + {len(dupes)} dupes = {len(misses) + len(dupes)} ignored files.")
