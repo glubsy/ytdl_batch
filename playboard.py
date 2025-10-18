@@ -9,6 +9,7 @@
 # use yt-dlp to generate archive.txt without downloading for example:
 # --flat-playlist Do not extract the videos of a playlist, only list them
 
+import os
 from sys import argv
 from typing import List, Mapping
 from urllib.request import Request, urlopen
@@ -22,7 +23,7 @@ log = logging.getLogger(__name__)
 logging.basicConfig()
 # log.setLevel(logging.DEBUG)
 
-BASE_URL = "https://api.playboard.co/v1/"
+BASE_URL = "https://lapi.playboard.co/v1/"
 PATH = "search"
 TYPE = "video"
 ENDPOINT = f"{BASE_URL}{PATH}/{TYPE}"
@@ -30,11 +31,20 @@ ENDPOINT = f"{BASE_URL}{PATH}/{TYPE}"
 HEADERS = {
   "origin": "https://playboard.co",
   "referer": "https://playboard.co/",
-  "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36"
-  "accept" "application/json, text/plain, */*",
-  "accept-encoding": "gzip, deflate, br",
-  "accept-language": "en,en-US",
-  "content-type": "application/json"
+  "user-agent": "Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0",
+  "Accept": "*/*",
+  "Accept-encoding": "gzip, deflate, br, zstd",
+  "Accept-language": "en,en-US",
+  "content-type": "application/json",
+  "origin": "https://playboard.co",
+  "referer": "https://playboard.co",
+  "SEC-GPC": "1",
+  "Sec-Fetch-Dest": "empty",
+  "Sec-Fetch-Mode": "cors",
+  "Sec-Fetch-Site": "same-site",
+  "Priority": "u=4",
+  "Access-Control-Request-Headers": "content-type",
+  "Access-Control-Request-Method": "POST"
 }
 
 
@@ -75,6 +85,8 @@ def get_videos_for_channel(channel_id: str):
   params = {
     "channelId": channel_id,
     "sortTypeId": "10",
+    "countryCode": "FR",
+    "extras[]": "totalVideos"
   }
 
   while has_next:
@@ -93,6 +105,12 @@ def get_videos_for_channel(channel_id: str):
 
 
 def generate_lists(channel_id: str):
+  bearer_token = os.getenv("PLAYBOARD_BEARER_TOKEN", None)
+  if bearer_token is not None:
+    HEADERS["authorization"] = f"Bearer {bearer_token}"
+  else:
+    raise Exception("No PLAYBOARD_BEARER_TOKEN environment variable set.")
+
   print(f"Finding video Ids in Playboard for channel \"{channel_id=}\":")
 
   pb_videos = []
