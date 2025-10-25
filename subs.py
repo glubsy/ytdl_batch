@@ -557,14 +557,14 @@ def main(args=None) -> int:
     # regex is greedier and would return too many false positives
     services: List[ProcessHandler] = []
 
-    if pargs.service == "twitch" or "all":
+    if pargs.service in ("twitch", "all"):
       services.append(TwitchHandler(
           cookies=pargs.cookies, 
           process_path=twitch_downloader_path,
           ignored=ignored_set
         )
       )
-    if pargs.service == "youtube" or "all":
+    if pargs.service in ("youtube", "all"):
       services.append(YoutubeHandler(
           cookies=pargs.cookies, 
           process_path=yt_downloader_path,
