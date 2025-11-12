@@ -262,8 +262,9 @@ class ProcessHandler():
         written = self._download(_id, args)
 
         if not written:
+          downloader_name = getattr(self.downloader, "default_name", "<unknown>")
           log.warning(
-            f"No filename written for Id {_id} by {self.downloader.default_name} "
+            f"No filename written for Id {_id} by {downloader_name} "
             f"according to its stdout.")
           continue
         did_download.append(_id)
@@ -282,7 +283,7 @@ class ProcessHandler():
       except AlreadyPresentError:
         log.warning(
           f"File {_out_path} was already present according to "
-          f"{self.downloader.default_name}.")
+          f"{getattr(self.downloader, 'default_name', '<unknown>')}.")
       except (NotAvailableAnymore, NoSubsAvailable, Exception) as e:
         print(f"Failed to download live chat for {_id}: {e}")
         log.warning(f"VideoId {_id} is not available anymore: {e}")

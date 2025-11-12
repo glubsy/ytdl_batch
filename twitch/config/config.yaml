@@ -1,0 +1,176 @@
+# Twitch rename VODs configuration file
+# Each entry corresponds to a single Twitch channel with its associated metadata.
+# Multiple entries can share the same directory_name if files from different channels
+# are stored in the same directory.
+# Fields:
+#   directory_name: The local directory name where the channel's VODs are stored.
+#                   This must match the directory structure used in your file system.
+#   author_name: A list of possible author names that appear in filenames for this channel.
+#                These must match the author names used in your video filenames.
+#   channel_id: The single Twitch channel ID for this entry.
+#               This is used to fetch the correct VOD information from Twitch API.
+
+Amiomoe:
+  directory_name: "amiomoe"
+  author_name: ["amiomoe"]
+  channel_id: "amiomoe"
+
+Mimomoe:
+  directory_name: "amiomoe"  # Same directory as Amiomoe
+  author_name: ["mimomoe"]
+  channel_id: "mimomoe"
+
+Anny:
+  directory_name: "anny"
+  author_name: ["Anny", "anny"]
+  channel_id: "anny"
+
+Not_Anny:
+  directory_name: "anny"  # Same directory as Anny
+  author_name: ["not_anny"]
+  channel_id: "not_anny"
+
+Cuemew:
+  directory_name: "cuemew"
+  author_name: ["Cuemew", "cuemew"]
+  channel_id: "cuemew"
+
+Dreamy Riko:
+  directory_name: "dreamyriko"
+  author_name: ["Dreamy Riko", "riko"]
+  channel_id: "dreamyriko"
+
+Fallenshadow:
+  directory_name: "fallenshadow"
+  author_name: ["Fallenshadow", "fallenshadow"]
+  channel_id: "fallenshadow"
+
+Shadowchama:
+  directory_name: "fallenshadow"  # Same directory as Fallenshadow
+  author_name: ["shadowchama"]
+  channel_id: "shadowchama"
+
+FRAIKI:
+  directory_name: "fraiki"
+  author_name: ["FRAIKI", "fraiki"]
+  channel_id: "fraiki"
+
+Irina Kumai:
+  directory_name: "irinakumai"
+  author_name: ["Irina Kumai", "irina_kumai"]
+  channel_id: "irinakumai"
+
+Kam0tan:
+  directory_name: "kam0tan"
+  author_name: ["Kam0tan", "kam0tan"]
+  channel_id: "kam0tan"
+
+Kamiko Kana:
+  directory_name: "kamiko_kana"
+  author_name: ["Kamiko Kana", "kana", "KamikoKana"]
+  channel_id: "kana"
+
+Runa:
+  directory_name: "runa"
+  author_name: ["runa"]
+  channel_id: "runa"
+
+Runyatan:
+  directory_name: "runa"  # Same directory as Runa
+  author_name: ["runyatan"]
+  channel_id: "runyatan"
+
+Kloe Kroc:
+  directory_name: "kloekroc"
+  author_name: ["Kloe Kroc", "kloekroc"]
+  channel_id: "kloekroc"
+
+Krumroll:
+  directory_name: "krumroll"
+  author_name: ["Krumroll", "krumroll"]
+  channel_id: "krumroll"
+
+Lilyhops:
+  directory_name: "lilyhops"
+  author_name: ["Lilyhops", "lilyhops"]
+  channel_id: "lilyhops"
+
+Mangobtuber:
+  directory_name: "mangobtuber"
+  author_name: ["MangoBtuber", "mangobtuber"]
+  channel_id: "mangobtuber"
+
+Marichan Duh:
+  directory_name: "marichanduh"
+  author_name: ["MarichanDuh", "marichanduh"]
+  channel_id: "marichanduhh"
+
+Marimari_en:
+  directory_name: "marimari_en"
+  author_name: ["Marimari_en", "marimari"]
+  channel_id: "marimari_en"
+
+Mikanthemink:
+  directory_name: "mikanthemink"
+  author_name: ["Mikanthemink", "mikanthemink"]
+  channel_id: "mikanthemink"
+
+Moka Kurai:
+  directory_name: "mokakurai"
+  author_name: ["Moka Kurai", "mokakurai"]
+  channel_id: "mokakurai"
+
+Natsutsuki Shiki:
+  directory_name: "natsutsuki_shiki"
+  author_name: ["shikinatsutsuki724", "natsutsukishiki"]
+  channel_id: "shikinatsutsuki724"
+
+Nekuma:
+  directory_name: "nekumavt"
+  author_name: ["Nekuma", "nekumavt"]
+  channel_id: "nekumavt"
+
+Nokko:
+  directory_name: "nokko"
+  author_name: ["Nokko", "nokko"]
+  channel_id: "nokko"
+
+Panko:
+  directory_name: "panko"
+  author_name: ["Panko", "panko"]
+  channel_id: "panko"
+
+Pokka:
+  directory_name: "pokka"
+  author_name: ["Pokka", "pokkavt"]
+  channel_id: "pokkavt"
+
+Ruri Nemuri:
+  directory_name: "rurinemui"
+  author_name: ["Ruri Nemui", "rurinemui"]
+  channel_id: "rurinemui"
+
+Ruruka Runa:
+  directory_name: "rurukaruna"
+  author_name: ["Ruruka Runa", "rurukaruna"]
+  channel_id: "rurukaruna"
+
+Shirohime:
+  directory_name: "shirohime"
+  author_name: ["Shirohime", "shirohimevt"]
+  channel_id: "shirohimevt"
+
+Tatsukkowai:
+  directory_name: "tatsukkowai"
+  author_name: ["Tatsukkowai", "tatsukkowai"]
+  channel_id: "tatsukkowai"
+
+vedal987:
+  directory_name: "vedal987"
+  author_name: ["vedal987"]
+  channel_id: "vedal987"
+
+Yukoob:
+  directory_name: "yukoob"
+  author_name: ["Yukoob", "yukoob"]
+  channel_id: "yukoob"
