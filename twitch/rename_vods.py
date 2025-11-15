@@ -4,7 +4,6 @@ and renames them based on their metadata fetched from Twitch API.
 
 - The video Id is updated from the VODS (if it still exists on Twitch).
 - The title is updated from the VODS (if it still exists on Twitch).
-- TODO: Some patterns are used to clean up the filenames.
 - TODO: the thumbnail is downloaded (for later embedding in the video file).
 """
 
@@ -210,6 +209,45 @@ def sanitize_filename(title: str) -> str:
     return title[:160]
 
 
+def apply_title_overrides(title: str, title_overrides: list[str]) -> str:
+    """
+    Apply title overrides to remove specified substrings or regex patterns from title.
+    
+    Args:
+        title: The original title string
+        title_overrides: List of strings to remove. If a string contains {{ }} pattern,
+                        the content inside is treated as a regex pattern.
+    
+    Returns:
+        Title with specified overrides removed and leading whitespace cleaned
+    """
+    if not title_overrides:
+        return title
+    
+    result = title
+    
+    for override in title_overrides:
+        if '{{' in override and '}}' in override:
+            # Extract regex pattern from {{ }} and construct the full pattern
+            # Example: "day {{ \\d+ }}" becomes pattern "day \\d+"
+            try:
+                # Replace {{ }} with the content inside, treating it as regex
+                regex_pattern = re.sub(r'\{\{\s*(.*?)\s*\}\}', r'\1', override)
+                result = re.sub(regex_pattern, '', result, flags=re.IGNORECASE)
+            except re.error as exc:
+                log.warning(
+                    "Invalid regex pattern in title override '%s': %s",
+                    override, exc)
+                continue
+        else:
+            # Simple substring removal (case-insensitive)
+            result = re.sub(re.escape(override), '', result, flags=re.IGNORECASE)
+    
+    # Clean up leading/trailing whitespace and multiple spaces
+    result = ' '.join(result.split())
+    return result
+
+
 def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
     """
     Find the best matching video from API data based on date proximity.
@@ -254,10 +292,16 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
     return best_match
 
 
-def generate_new_filename(file_path: Path, video: dict) -> str:
+def generate_new_filename(file_path: Path, video: dict, channel_config: dict | None = None) -> str:
     """
     Generate new filename with updated title and video ID.
     Preserves the original date/time prefix and file extension.
+    Applies title overrides if configured for the channel.
+    
+    Args:
+        file_path: Path to the original video file
+        video: Video metadata from Twitch API
+        channel_config: Configuration for the specific channel (optional)
     """
     original_name = file_path.name
 
@@ -279,6 +323,10 @@ def generate_new_filename(file_path: Path, video: dict) -> str:
     author = author_match.group(1) if author_match else "Unknown"
 
     clean_title = sanitize_filename(video['title'])
+    
+    # Apply title overrides if configured for this channel
+    if channel_config and (title_overrides := channel_config.get('title_overrides')):
+        clean_title = apply_title_overrides(clean_title, title_overrides)
 
     video_id = video['id']
 
@@ -420,8 +468,16 @@ def update_filenames(
         if not matching_video:
             continue
 
+        # Get channel configuration for title overrides
+        channel_config = None
+        for config_name, config_details in CONFIG.items():
+            if isinstance(config_details, dict) \
+                    and config_details.get('channel_id') == channel_id:
+                channel_config = config_details
+                break
+
         # Generate new filename
-        new_filename = generate_new_filename(file_path, matching_video)
+        new_filename = generate_new_filename(file_path, matching_video, channel_config)
         new_path = file_path.parent / new_filename
 
         # Skip if filename wouldn't change

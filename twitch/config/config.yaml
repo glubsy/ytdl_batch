@@ -9,6 +9,9 @@
 #                These must match the author names used in your video filenames.
 #   channel_id: The single Twitch channel ID for this entry.
 #               This is used to fetch the correct VOD information from Twitch API.
+#   title_overrides: (Optional) List of strings to remove from video titles.
+#                    Strings containing {{ }} are treated as regex patterns.
+#                    Example: "day {{ \\\\d+ }}" matches "day 59"
 
 Amiomoe:
   directory_name: "amiomoe"
@@ -34,6 +37,9 @@ Cuemew:
   directory_name: "cuemew"
   author_name: ["Cuemew", "cuemew"]
   channel_id: "cuemew"
+  title_overrides:
+    - "Stream"  # Simple substring removal
+    - "day {{ \\\\d+ }}"  # Regex pattern to remove "day 59", "day 123", etc.
 
 Dreamy Riko:
   directory_name: "dreamyriko"
@@ -54,6 +60,8 @@ FRAIKI:
   directory_name: "fraiki"
   author_name: ["FRAIKI", "fraiki"]
   channel_id: "fraiki"
+  title_overrides:
+    - "🔴!discord"
 
 Irina Kumai:
   directory_name: "irinakumai"
@@ -84,6 +92,8 @@ Kloe Kroc:
   directory_name: "kloekroc"
   author_name: ["Kloe Kroc", "kloekroc"]
   channel_id: "kloekroc"
+  title_overrides:
+    - "🐊💢 !discord !gg"
 
 Krumroll:
   directory_name: "krumroll"
@@ -99,6 +109,8 @@ Mangobtuber:
   directory_name: "mangobtuber"
   author_name: ["MangoBtuber", "mangobtuber"]
   channel_id: "mangobtuber"
+  title_overrides:
+    - "☆ !merch !gg !throne !socials [Birbtuber]"
 
 Marichan Duh:
   directory_name: "marichanduh"
@@ -144,11 +156,15 @@ Pokka:
   directory_name: "pokka"
   author_name: ["Pokka", "pokkavt"]
   channel_id: "pokkavt"
+  title_overrides:
+    - "!discord !lurk"
 
 Ruri Nemuri:
   directory_name: "rurinemui"
   author_name: ["Ruri Nemui", "rurinemui"]
   channel_id: "rurinemui"
+  title_overrides:
+    - "⋮ !vgen !discord !throne"
 
 Ruruka Runa:
   directory_name: "rurukaruna"
@@ -164,6 +180,8 @@ Tatsukkowai:
   directory_name: "tatsukkowai"
   author_name: ["Tatsukkowai", "tatsukkowai"]
   channel_id: "tatsukkowai"
+  title_overrides:
+    - "- A dragon who's still hiding in their shell? THE ADVENTURES MOVING ONWARD... (day {{ \\\\d+ }})"
 
 vedal987:
   directory_name: "vedal987"
