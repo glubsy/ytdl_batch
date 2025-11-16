@@ -42,7 +42,7 @@ ChannelName:
   channel_id: "twitch_channel_id"         # Twitch channel ID
   title_overrides:                        # Optional: patterns to remove from titles
     - "Stream"                            # Simple substring removal
-    - "day {{ \\\\d+ }}"                  # Regex pattern removal
+    - "day {{ \\d+ }}"                  # Regex pattern removal
 ```
 
 See provided config.yaml file in the config directory for more examples.
@@ -111,24 +111,26 @@ title_overrides:
 
 ### Regex Pattern Removal
 
-Use regex patterns for more complex matching by wrapping them in `{{ }}`:
+Use regex patterns for more complex matching by wrapping them in `{{ }}`. You can mix literal text with regex patterns:
 ```yaml
 title_overrides:
-  - "day {{ \\\\d+ }}"        # Matches "day 1", "day 59", "day 123"
-  - "Episode {{ \\\\d+ }}"    # Matches "Episode 1", "Episode 42"
-  - "Part {{ [IV]+ }}"       # Matches "Part I", "Part II", "Part IV"
-  - "{{ \\([^)]*\\) }}"      # Removes content in parentheses
+  - "day {{ \\d+ }}"                                    # Simple: matches "day 1", "day 59", etc.
+  - "Episode {{ \\d+ }}"                                # Simple: matches "Episode 1", "Episode 42"
+  - "Part {{ [IV]+ }}"                                   # Roman numerals: "Part I", "Part II", etc.
+  - "{{ \\([^)]*\\) }}"                                  # Content in parentheses
+  - "- A test for who's the best? moving on... (day {{ \\d+ }})"  # Complex: literal text + regex
 ```
 
-**Note:** In YAML, backslashes must be double-escaped (use `\\\\` for `\`).
+**Note:** In YAML, backslashes must be double-escaped (use `\\\\` for `\`). Text outside `{{ }}` is treated as literal text, while content inside `{{ }}` is treated as regex patterns.
 
 ### Example Transformations
 
 | Original Title | Override Pattern | Result |
 |---------------|------------------|--------|
-| "Amazing Stream day 59" | `["Stream", "day {{ \\\\d+ }}"]` | "Amazing" |
-| "Gaming Session - Episode 42" | `["Episode {{ \\\\d+ }}"]` | "Gaming Session -" |
+| "Amazing Stream day 59" | `["Stream", "day {{ \\d+ }}"]` | "Amazing" |
+| "Gaming Session - Episode 42" | `["Episode {{ \\d+ }}"]` | "Gaming Session -" |
 | "【APEX】Ranked Stream Part III" | `["【APEX】", "Part {{ [IV]+ }}"]` | "Ranked Stream" |
+| "Math AND Geometry! - A test for who's the best? moving on... (day 60)" | `["- A test for who's the best? moving on... (day {{ \\d+ }})"]` | "Math AND Geometry!" |
 
 ## File Naming Convention
 
@@ -139,7 +141,7 @@ YYYYMMDD HH-MM-SS [Author] Title [quality][video_id].ext
 
 **Example:**
 ```
-20241024 14-29-04 [runa] Stream Title [best][1234567890].mp4
+20241024 14-29-04 [Author] Stream Title [best][1234567890].mp4
 ```
 
 ## How It Works

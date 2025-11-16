@@ -228,12 +228,38 @@ def apply_title_overrides(title: str, title_overrides: list[str]) -> str:
     
     for override in title_overrides:
         if '{{' in override and '}}' in override:
-            # Extract regex pattern from {{ }} and construct the full pattern
-            # Example: "day {{ \\d+ }}" becomes pattern "day \\d+"
+            # Build a regex pattern where {{ }} parts are treated as regex 
+            # and everything else is treated as literal text
+            # Example: "- A test (day {{ \\d+ }})" becomes "- A test \(day \d+\)"
             try:
-                # Replace {{ }} with the content inside, treating it as regex
-                regex_pattern = re.sub(r'\{\{\s*(.*?)\s*\}\}', r'\1', override)
-                result = re.sub(regex_pattern, '', result, flags=re.IGNORECASE)
+                # Split the override into parts, escaping literal parts and keeping regex parts
+                pattern_parts = []
+                current_pos = 0
+                
+                # Find all {{ }} matches
+                regex_matches = list(re.finditer(r'\{\{\s*(.*?)\s*\}\}', override))
+                
+                for match in regex_matches:
+                    # Add literal text before the {{ }} as escaped
+                    literal_text = override[current_pos:match.start()]
+                    if literal_text:
+                        pattern_parts.append(re.escape(literal_text))
+                    
+                    # Add the regex pattern inside {{ }} without escaping
+                    regex_content = match.group(1)
+                    pattern_parts.append(regex_content)
+                    
+                    current_pos = match.end()
+                
+                # Add any remaining literal text after the last {{ }}
+                remaining_text = override[current_pos:]
+                if remaining_text:
+                    pattern_parts.append(re.escape(remaining_text))
+                
+                # Combine all parts into final regex pattern
+                final_pattern = ''.join(pattern_parts)
+                result = re.sub(final_pattern, '', result, flags=re.IGNORECASE)
+                
             except re.error as exc:
                 log.warning(
                     "Invalid regex pattern in title override '%s': %s",
