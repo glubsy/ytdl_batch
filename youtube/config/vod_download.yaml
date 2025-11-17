@@ -1,0 +1,25 @@
+# Configuration file for VOD downloading settings
+# Global settings for downloading VODs from YouTube channels.
+
+cookies_path : "~/youtube_cookies.txt"
+po_token_path : "~/youtube_po_token.txt"
+
+---
+
+# Configuration file for Youtube VOD downloading.
+# Each entry corresponds to a channel with its associated metadata.
+#
+# Fields:
+#   download_path: The local directory path where the channel's VODs will be downloaded.
+#   archive_path: The path to the archive file that keeps track of downloaded VODs.
+#   channel_id: The YouTube channel ID or handle for this author.
+
+Komachi Panko:
+  download_path: "/path/to/Komachi Panko/youtube"
+  archive_path: "/path/to/Komachi Panko/youtube/archive.txt"
+  channel_id: "@komachipanko"
+
+Sameko Saba:
+  download_path: "/path/to/Sameko Saba"
+  archive_path: "/path/to/Sameko Saba/archive.txt"
+  channel_id: "@SamekoSaba"
