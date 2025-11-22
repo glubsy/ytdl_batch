@@ -93,6 +93,10 @@ download_channel() {
 
     echo "Downloading from: $youtube_url"
 
+    # Capture yt-dlp output to check for rate limiting errors
+    local temp_output
+    temp_output=$(mktemp)
+    
     yt-dlp -v -o \
         '%(upload_date)s [%(uploader)s] %(title)s [%(height)s][%(id)s].%(ext)s' \
         --fragment-retries 10 \
@@ -112,7 +116,29 @@ download_channel() {
         -S "res:480,+codec:h264:m4a" \
         --extractor-args "youtube:player-client=web,default;po_token=web+$(cat "$PO_TOKEN_PATH" 2>/dev/null || echo '')" \
         --extractor-args "youtube:po_token=web.subs+$(cat "$PO_TOKEN_PATH" 2>/dev/null || echo '')" \
-        "$youtube_url"
+        "$youtube_url" 2>&1 | tee "$temp_output"
+    
+    local exit_code=${PIPESTATUS[0]}
+    
+    # Check for rate limiting errors (429 or "too many requests")
+    if grep -qi -E "(429|too many requests)" "$temp_output"; then
+        echo ""
+        echo "⚠️  ERROR: Rate limiting detected for channel: $channel_name"
+        echo "⚠️  YouTube is throttling requests (HTTP 429 or 'Too Many Requests')"
+        echo "⚠️  Exiting script to avoid further rate limiting"
+        echo ""
+        # Clean up temp file before exiting
+        rm -f "$temp_output"
+        exit 1
+    fi
+    
+    # Clean up temp file
+    rm -f "$temp_output"
+    
+    if [[ $exit_code -ne 0 ]]; then
+        echo "yt-dlp exited with code: $exit_code"
+        return $exit_code
+    fi
 
     echo "Completed processing channel: $channel_name"
     echo ""
