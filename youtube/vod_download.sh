@@ -61,12 +61,16 @@ download_channel() {
     local download_path="$2"
     local archive_path="$3"
     local channel_id="$4"
+    local tab="${5:-}"  # Optional tab parameter, empty by default
 
     echo "============================================"
     echo "Processing channel: $channel_name"
     echo "Download path: $download_path"
     echo "Archive path: $archive_path"
     echo "Channel ID: $channel_id"
+    if [[ -n "$tab" ]]; then
+        echo "Tab: $tab"
+    fi
     echo "============================================"
 
     # Create download directory if it doesn't exist
@@ -80,15 +84,20 @@ download_channel() {
 
     # Construct YouTube URL
     local youtube_url
+    local tab_suffix=""
+    if [[ -n "$tab" ]]; then
+        tab_suffix="/${tab}"
+    fi
+    
     if [[ "$channel_id" == @* ]]; then
         # Handle format "@username"
-        youtube_url="https://www.youtube.com/${channel_id}/streams"
+        youtube_url="https://www.youtube.com/${channel_id}${tab_suffix}"
     elif [[ "$channel_id" =~ ^UC[a-zA-Z0-9_-]{22}$ ]]; then
         # Handle format "UCxxxxxxxxxxxxxxxxxxxxxxx" (channel ID)
-        youtube_url="https://www.youtube.com/channel/${channel_id}/streams"
+        youtube_url="https://www.youtube.com/channel/${channel_id}${tab_suffix}"
     else
         # Assume it's a custom username or handle
-        youtube_url="https://www.youtube.com/c/${channel_id}/streams"
+        youtube_url="https://www.youtube.com/c/${channel_id}${tab_suffix}"
     fi
 
     echo "Downloading from: $youtube_url"
@@ -163,6 +172,14 @@ for channel_name in "${CHANNEL_NAMES[@]}"; do
     download_path=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].download_path" "$CONFIG_FILE")
     archive_path=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].archive_path" "$CONFIG_FILE")
     channel_id=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].channel_id" "$CONFIG_FILE")
+    
+    # Get tabs array if specified, otherwise use empty array (will use base channel URL)
+    tabs_json=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].tabs // null" "$CONFIG_FILE")
+    if [[ "$tabs_json" == "null" ]]; then
+        tabs=("")  # Empty string means no tab suffix
+    else
+        mapfile -t tabs < <(echo "$tabs_json" | yq -r '.[]' 2>/dev/null)
+    fi
 
     # Skip if any required field is missing or null
     if [[ "$download_path" == "null" || "$archive_path" == "null" || "$channel_id" == "null" ]]; then
@@ -176,12 +193,15 @@ for channel_name in "${CHANNEL_NAMES[@]}"; do
         echo "Note: A new archive file will be created during the download process."
     fi
 
-    # Download for this channel (with error handling)
-    if ! download_channel "$channel_name" "$download_path" "$archive_path" "$channel_id"; then
-        echo "Error processing channel: $channel_name"
-        echo "Continuing with next channel..."
-        echo ""
-    fi
+    # Download for each tab specified
+    for tab in "${tabs[@]}"; do
+        # Download for this channel tab (with error handling)
+        if ! download_channel "$channel_name" "$download_path" "$archive_path" "$channel_id" "$tab"; then
+            echo "Error processing channel: $channel_name (tab: $tab)"
+            echo "Continuing with next tab/channel..."
+            echo ""
+        fi
+    done
 done
 
 echo "All channels processed!"

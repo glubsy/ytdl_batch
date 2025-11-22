@@ -13,11 +13,15 @@ po_token_path : "~/youtube_po_token.txt"
 #   download_path: The local directory path where the channel's VODs will be downloaded.
 #   archive_path: The path to the archive file that keeps track of downloaded VODs.
 #   channel_id: The YouTube channel ID or handle for this author.
+#   tabs: (Optional) List of YouTube tabs to download from. If not specified, uses base channel URL.
+#         Valid values: "videos", "shorts", "streams", "live", "membership"
+#         Example: ["videos", "shorts", "streams"]
 
 Komachi Panko:
   download_path: "/path/to/Komachi Panko/youtube"
   archive_path: "/path/to/Komachi Panko/youtube/archive.txt"
   channel_id: "@komachipanko"
+  tabs: ["streams"]  # Optional: if omitted, uses base channel URL without /tab suffix
 
 Sameko Saba:
   download_path: "/path/to/Sameko Saba"
