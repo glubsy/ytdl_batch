@@ -33,7 +33,8 @@ with patch("builtins.open", mock_open(read_data=mock_config_data)):
             extract_date_from_filename,
             find_matching_video,
             generate_new_filename,
-            update_filenames
+            update_filenames,
+            apply_title_overrides
         )
 
 
@@ -567,6 +568,146 @@ class TestVideoMatching(unittest.TestCase):
         
         result = self.find_matching_video(file_path, videos)
         self.assertIsNone(result)
+
+
+class TestTitleOverrides(unittest.TestCase):
+    """Test suite for title override functionality."""
+
+    def test_simple_text_removal(self):
+        """Test simple substring removal (case-insensitive)."""
+        title = "Amazing Stream with friends"
+        overrides = ["Stream"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Amazing with friends")
+
+    def test_simple_regex_pattern(self):
+        """Test basic regex pattern with {{ }} syntax."""
+        title = "Amazing Stream day 59 with friends"
+        overrides = ["Stream", "day {{ \\d+ }}"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Amazing with friends")
+
+    def test_multiple_regex_patterns(self):
+        """Test multiple regex patterns in single override."""
+        title = "Episode 42 - Part III - Some content here"
+        overrides = ["Episode {{ \\d+ }} - Part {{ [IV]+ }} -"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Some content here")
+
+    def test_complex_pattern_with_special_chars(self):
+        """Test complex pattern with special characters and literal text."""
+        title = "Math AND Geometry! - A test for who's the best? moving on... (day 60)"
+        overrides = ["- A test for who's the best? moving on... (day {{ \\d+ }})"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Math AND Geometry!")
+
+    def test_dreamyriko_social_links_removal(self):
+        """Test removal of social media links from dreamyriko streams."""
+        title = "*meow* I DONOTHON DAY... IDK I !uwumarket !commission !links !discord +18"
+        overrides = ["I !uwumarket !commission !links !discord +18"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "*meow* I DONOTHON DAY... IDK")
+
+    def test_parentheses_removal_regex(self):
+        """Test removing content in parentheses using regex."""
+        title = "Gaming session (commentary) with friends"
+        overrides = ["{{ \\([^)]*\\) }}"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Gaming session with friends")
+
+    def test_multiple_overrides_applied(self):
+        """Test multiple override patterns applied sequentially."""
+        title = "【GENSHIN IMPACT】Stream Episode 123 - day 5"
+        overrides = ["【GENSHIN IMPACT】", "Episode {{ \\d+ }} -", "day {{ \\d+ }}"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Stream")
+
+    def test_case_insensitive_matching(self):
+        """Test that matching is case-insensitive."""
+        title = "AMAZING STREAM with friends"
+        overrides = ["stream"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "AMAZING with friends")
+
+    def test_no_overrides(self):
+        """Test that title is unchanged when no overrides provided."""
+        title = "Original Title Here"
+        overrides = []
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Original Title Here")
+
+    def test_override_not_found(self):
+        """Test that title is unchanged when override pattern not found."""
+        title = "Original Title Here"
+        overrides = ["NotInTitle"]
+        result = apply_title_overrides(title, overrides)
+        self.assertEqual(result, "Original Title Here")
+
+    def test_whitespace_cleanup(self):
+        """Test that extra whitespace is properly cleaned up."""
+        title = "Title with    multiple    spaces"
+        overrides = ["with"]
+        result = apply_title_overrides(title, overrides)
+        # Multiple spaces should be collapsed to single space
+        self.assertEqual(result, "Title multiple spaces")
+
+
+class TestFilenameGenerationWithOverrides(unittest.TestCase):
+    """Test suite for filename generation with title overrides."""
+
+    def test_dreamyriko_filename_transformation(self):
+        """Test complete filename transformation for dreamyriko stream."""
+        original_filename = "20251121 19-01-20 [dreamyriko] *meow* I DONOTHON DAY... IDK I !uwumarket !commission !links !discord +18 [best][315185271522].mp4"
+        
+        mock_video = {
+            'id': '2624396721',
+            'title': '*meow* I DONOTHON DAY... IDK I !uwumarket !commission !links !discord +18'
+        }
+        
+        channel_config = {
+            'title_overrides': ["I !uwumarket !commission !links !discord +18"]
+        }
+        
+        mock_file = Path(original_filename)
+        result = generate_new_filename(mock_file, mock_video, channel_config)
+        
+        # Note: * is sanitized to _ for filesystem compatibility
+        expected = "20251121 19-01-20 [dreamyriko] _meow_ I DONOTHON DAY... IDK [best][2624396721].mp4"
+        self.assertEqual(result, expected)
+
+    def test_filename_with_complex_regex_override(self):
+        """Test filename generation with complex regex override."""
+        original_filename = "20241124 14-30-00 [TestStreamer] old title [best][999].mp4"
+        
+        mock_video = {
+            'id': '1234567890',
+            'title': 'Math AND Geometry! - A test for who\'s the best? moving on... (day 60)'
+        }
+        
+        channel_config = {
+            'title_overrides': ["- A test for who's the best? moving on... (day {{ \\d+ }})"]
+        }
+        
+        mock_file = Path(original_filename)
+        result = generate_new_filename(mock_file, mock_video, channel_config)
+        
+        expected = "20241124 14-30-00 [TestStreamer] Math AND Geometry! [best][1234567890].mp4"
+        self.assertEqual(result, expected)
+
+    def test_filename_without_overrides(self):
+        """Test filename generation without any overrides."""
+        original_filename = "20241124 14-30-00 [TestStreamer] old title [best][999].mp4"
+        
+        mock_video = {
+            'id': '1234567890',
+            'title': 'New Stream Title'
+        }
+        
+        mock_file = Path(original_filename)
+        result = generate_new_filename(mock_file, mock_video, None)
+        
+        expected = "20241124 14-30-00 [TestStreamer] New Stream Title [best][1234567890].mp4"
+        self.assertEqual(result, expected)
 
 
 if __name__ == '__main__':

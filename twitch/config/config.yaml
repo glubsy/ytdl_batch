@@ -42,6 +42,8 @@ Dreamy Riko:
   directory_name: "dreamyriko"
   author_name: ["Dreamy Riko", "riko"]
   channel_id: "dreamyriko"
+  title_overrides:
+  - "I !uwumarket !commission !links !discord +18"
 
 Fallenshadow:
   directory_name: "fallenshadow"
