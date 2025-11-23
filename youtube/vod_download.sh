@@ -88,7 +88,7 @@ download_channel() {
     if [[ -n "$tab" ]]; then
         tab_suffix="/${tab}"
     fi
-    
+
     if [[ "$channel_id" == @* ]]; then
         # Handle format "@username"
         youtube_url="https://www.youtube.com/${channel_id}${tab_suffix}"
@@ -105,30 +105,44 @@ download_channel() {
     # Capture yt-dlp output to check for rate limiting errors
     local temp_output
     temp_output=$(mktemp)
-    
-    yt-dlp -v -o \
-        '%(upload_date)s [%(uploader)s] %(title)s [%(height)s][%(id)s].%(ext)s' \
-        --fragment-retries 10 \
-        --postprocessor-args 'ffmpeg:-movflags faststart' \
-        --cookies "$COOKIES_PATH" \
-        --max-sleep-interval 120 \
-        --min-sleep-interval 60 \
-        --xattrs \
-        --no-part \
-        --abort-on-unavailable-fragments \
-        --download-archive "$archive_path" \
-        --playlist-reverse \
-        --add-metadata \
-        --embed-thumbnail \
-        --write-subs \
-        --sub-langs "live_chat" \
-        -S "res:480,+codec:h264:m4a" \
-        --extractor-args "youtube:player-client=web,default;po_token=web+$(cat "$PO_TOKEN_PATH" 2>/dev/null || echo '')" \
-        --extractor-args "youtube:po_token=web.subs+$(cat "$PO_TOKEN_PATH" 2>/dev/null || echo '')" \
-        "$youtube_url" 2>&1 | tee "$temp_output"
-    
+
+    # Build yt-dlp command with conditional arguments
+    local ytdlp_args=(
+        -v
+        -o '%(upload_date)s [%(uploader)s] %(title)s [%(height)s][%(id)s].%(ext)s'
+        --fragment-retries 10
+        --postprocessor-args 'ffmpeg:-movflags faststart'
+        --max-sleep-interval 120
+        --min-sleep-interval 60
+        --xattrs
+        --no-part
+        --abort-on-unavailable-fragments
+        --download-archive "$archive_path"
+        --playlist-reverse
+        --add-metadata
+        --embed-thumbnail
+        --write-subs
+        --sub-langs "live_chat"
+        -S "res:480,+codec:h264:m4a"
+    )
+
+    # Add cookies argument only if the file exists
+    if [[ -f "$COOKIES_PATH" ]]; then
+        ytdlp_args+=(--cookies "$COOKIES_PATH")
+    fi
+
+    # Add extractor-args with PO token only if the file exists
+    if [[ -f "$PO_TOKEN_PATH" ]]; then
+        ytdlp_args+=(--extractor-args "youtube:player-client=web,default;po_token=web+$(cat "$PO_TOKEN_PATH")")
+        ytdlp_args+=(--extractor-args "youtube:po_token=web.subs+$(cat "$PO_TOKEN_PATH")")
+    fi
+
+    ytdlp_args+=("$youtube_url")
+
+    yt-dlp "${ytdlp_args[@]}" 2>&1 | tee "$temp_output"
+
     local exit_code=${PIPESTATUS[0]}
-    
+
     # Check for rate limiting errors (429 or "too many requests")
     if grep -qi -E "(429|too many requests)" "$temp_output"; then
         echo ""
@@ -140,10 +154,10 @@ download_channel() {
         rm -f "$temp_output"
         exit 1
     fi
-    
+
     # Clean up temp file
     rm -f "$temp_output"
-    
+
     if [[ $exit_code -ne 0 ]]; then
         echo "yt-dlp exited with code: $exit_code"
         return $exit_code
@@ -172,7 +186,7 @@ for channel_name in "${CHANNEL_NAMES[@]}"; do
     download_path=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].download_path" "$CONFIG_FILE")
     archive_path=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].archive_path" "$CONFIG_FILE")
     channel_id=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].channel_id" "$CONFIG_FILE")
-    
+
     # Get tabs array if specified, otherwise use empty array (will use base channel URL)
     tabs_json=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].tabs // null" "$CONFIG_FILE")
     if [[ "$tabs_json" == "null" ]]; then
