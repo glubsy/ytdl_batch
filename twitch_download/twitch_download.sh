@@ -7,6 +7,7 @@ set -euo pipefail
 
 # Base storage path for all channels
 BASE_STORAGE="/storage/vtubers_raw_04/vtubers_dump"
+COOKIES_FILE="${HOME}/Cookies/firefox_cookies.txt"
 
 # Define channels as associative arrays. The author_name is used for the output filename.
 # Format: channel_name|output_path|author_name
@@ -91,13 +92,16 @@ process_channel() {
     # Change to output directory
     cd "${output_path}"
 
-    # Run tsp with ytdlp
+    # Add a task in task spooler (tsp) to download videos
     # Skip live streams using --match-filter to only download VODs
     tsp ytdlp \
         -o "%(upload_date)s [${author_name}] %(title)s (no bgm) [%(height)s][%(id)s].%(ext)s" \
         --fragment-retries 50 \
         --download-archive "${ARCHIVE_FILE}" \
         --match-filter "!is_live" \
+        --playlist-reverse \
+        --postprocessor-args 'ffmpeg:-movflags -faststart' \
+        --cookies "${COOKIES_FILE}" \
         "https://www.twitch.tv/${channel_name}/videos"
 
     echo "Queued download for ${author_name}"
