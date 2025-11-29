@@ -47,8 +47,60 @@ wait_for_ytdlp_to_finish() {
     echo "No ytdlp processes detected, proceeding with transcoding"
 }
 
-# Wait for any ytdlp processes to finish before starting, to reduce IO pressure
-wait_for_ytdlp_to_finish
+# Get file stats and check if ready to be processed
+# Sets global variables: file_mtime_seconds, file_size_bytes, file_diff_sec, file_now_seconds
+# Returns 0 (true) if ready, 1 (false) if not
+get_file_stats_and_check_ready() {
+	local f="$1"
+	file_now_seconds=$(date +%s)
+	# Get mtime in seconds + size
+	local stat_data=$(stat --print '%Z %s' "$f" 2>/dev/null)
+	
+	if [[ -z "$stat_data" ]]; then
+		return 1
+	fi
+	
+	# Split string on whitespace and convert to array
+	stat_data=(${(@s: :)stat_data})
+	file_mtime_seconds=${stat_data[@]:0:1}  # same as ${stat_data[1]}, note that echo ${(t)mtime_seconds} returns scalar
+	file_size_bytes=${stat_data[@]:1:2}     # same as ${stat_data[2]}
+	file_diff_sec=$((${file_now_seconds} - ${file_mtime_seconds}))
+	
+	# File must be larger than 1000 bytes
+	if [[ ${file_size_bytes} -le 1000 ]]; then
+		return 1
+	fi
+	
+	# File must not have been modified in the last MAX_TIME_DIFF minutes
+	if [[ ${file_diff_sec} -ge $((${MAX_TIME_DIFF} * 60)) ]]; then
+		return 0
+	fi
+	
+	return 1
+}
+
+# First pass: check if there are any files to process
+has_files_to_process=false
+for orig dest in "${(@kv)destinations}"; do
+	if [[ ! -d "${orig}" ]]; then
+		continue
+	fi
+	
+	for f in ${orig}/*.${TS_EXT}(N); do
+		if get_file_stats_and_check_ready "$f"; then
+			has_files_to_process=true
+			break 2  # Break out of both loops
+		fi
+	done
+done
+
+# Only wait for ytdlp if we actually have files to process
+if [[ "$has_files_to_process" == "true" ]]; then
+	wait_for_ytdlp_to_finish
+else
+	echo "No files ready to process. Exiting."
+	exit 0
+fi
 
 # Scan for ts files and transcode them into destination
 for orig dest in "${(@kv)destinations}"; do
@@ -62,53 +114,40 @@ for orig dest in "${(@kv)destinations}"; do
 	# (N) glob qualifier equivalent to "setopt null_glob" to avoid getting a (blocking) error if no file is found
 	for f in ${orig}/*.${TS_EXT}(N); do
 		filename="$(basename $f)"
-		# echo "Found ${TS_EXT} file: $filename";
-
-		# Have to make sure the file is not being written to currently
 		
-		now_seconds=$(date +%s)
-		# Get ctime in seconds + size
-		stat_data=$(stat --print '%Z %s' "$f")
-		# Split string on whitespace and convert to array
-		stat_data=(${(@s: :)stat_data})
-		mtime_seconds=${stat_data[@]:0:1}  # same as ${stat_data[1]}, note that echo ${(t)mtime_seconds} returns scalar OwO
-		size_bytes=${stat_data[@]:1:2}     # same as ${stat_data[2]}
-
-		if [[ ${size_bytes} -le 1000 ]]; then
-			echo "${YELLOW}${orig}/${filename} is ${size_bytes} bytes, too small to be a valid media file. Ignoring...${RESET}"
+		# Check if file is ready for processing (also populates file_* variables)
+		if ! get_file_stats_and_check_ready "$f"; then
+			# File is not ready - log the reason using the populated variables
+			if [[ ${file_size_bytes} -le 1000 ]]; then
+				echo "${YELLOW}${orig}/${filename} is ${file_size_bytes} bytes, too small to be a valid media file. Ignoring...${RESET}"
+			else
+				echo "${MAGENTA}$filename is probably still being written to. Last changed ${file_diff_sec} seconds ago.${RESET}"
+			fi
 			continue
 		fi
+		
+		# File is ready to process - use the already-fetched stats for logging
+		echo "${filename} was modified $((${file_diff_sec}/60)) minutes ago (more than ${MAX_TIME_DIFF} minutes ago)."
+		
+		dest_filename="${filename%.ts}.mp4"
+		echo "Transcoding to: $dest/$dest_filename"
 
-		# If file has not been modified in the last 10 minutes, 
-		# we suppose the livestream is over and it is now safe to move the file
-		diff_sec=$((${now_seconds} - ${mtime_seconds}))
-		if [[ ${diff_sec} -ge $((${MAX_TIME_DIFF} * 60)) ]]; then
-			echo "${filename} was modified $((${diff_sec}/60)) minutes ago (more than ${MAX_TIME_DIFF} minutes ago)."
-			#echo "DEBUG stat\n$(stat ${f})"
-			
-			dest_filename="${filename%.ts}.mp4"
-			echo "Transcoding to: $dest/$dest_filename"
+		ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}"
+		ffmpeg_exit=$?
 
-			ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}"
-			ffmpeg_exit=$?
-
-			if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
-				echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
-				echo "Removing $f from source..."
-				rm $f
-			else
-				echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}. Trying to move source file instead of transcoding...${RESET}"
-				mkdir -p "$dest"
-				mv "$f" "$dest/$filename"
-			        if [[ $? -eq 0 ]]; then
-					echo "${YELLOW}Moved $f to $dest/$filename instead of transcoding!${RESET}"
-				else
-					echo "${RED}Something went wrong trying to move ${f} to ${dest}/${filename}. Please investigate!${RESET}"
-				fi
-			fi
+		if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
+			echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
+			echo "Removing $f from source..."
+			rm $f
 		else
-			echo "${MAGENTA}$filename is probably still being written to. Last changed ${diff_sec} seconds ago.${RESET}"
-			#echo "DEBUG stat:\n$(stat "${f}")."
+			echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}. Trying to move source file instead of transcoding...${RESET}"
+			mkdir -p "$dest"
+			mv "$f" "$dest/$filename"
+			if [[ $? -eq 0 ]]; then
+				echo "${YELLOW}Moved $f to $dest/$filename instead of transcoding!${RESET}"
+			else
+				echo "${RED}Something went wrong trying to move ${f} to ${dest}/${filename}. Please investigate!${RESET}"
+			fi
 		fi
 	done
 done
