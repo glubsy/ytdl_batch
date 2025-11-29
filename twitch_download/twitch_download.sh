@@ -98,7 +98,7 @@ process_channel() {
         --fragment-retries 50 \
         --download-archive "${ARCHIVE_FILE}" \
         --match-filter "!is_live" \
-        "https://www.twitch.tv/${channel_name}"
+        "https://www.twitch.tv/${channel_name}/videos"
 
     echo "Queued download for ${author_name}"
     echo "---"
