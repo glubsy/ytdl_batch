@@ -177,6 +177,11 @@ Shirohime:
   author_name: ["Shirohime", "shirohimevt"]
   channel_id: "shirohimevt"
 
+Sobuuo:
+  directory_name: "sobuuo"
+  author_name: ["Sobuuo", "sobuuo"]
+  channel_id: "sobuuo"
+
 Tatsukkowai:
   directory_name: "tatsukkowai"
   author_name: ["Tatsukkowai", "tatsukkowai"]
