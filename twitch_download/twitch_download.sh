@@ -57,7 +57,7 @@ scan_and_update_archive() {
                 # Not in archive, add it
                 echo "${archive_entry}" >> "${ARCHIVE_FILE}"
                 echo "  Added to archive: ${video_id} from $(basename "$file")"
-                ((count++))
+                count=$((count + 1))
             fi
         fi
     done < <(find "${output_path}" -type f \( -name "*.mp4" -o -name "*.mkv" -o -name "*.webm" -o -name "*.ts" \) -print0 2>/dev/null)
