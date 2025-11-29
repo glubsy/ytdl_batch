@@ -1,10 +1,10 @@
 [Unit]
-Description=Transcode remote TS files into locally stored MP4 files
+Description=Download Twitch videos for configured channels
 Requires=remote-twitch_monitor.mount
 
 [Service]
 Type=oneshot
-ExecStart=transcode_ts.sh
+ExecStart=twitch_download.sh
 
 [Install]
 WantedBy=default.target

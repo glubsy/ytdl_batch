@@ -1,0 +1,17 @@
+[Unit]
+Description=Schedule twitch_download to run once daily
+RefuseManualStart=no
+RefuseManualStop=no
+
+[Timer]
+# Execute job if it missed a run due to machine being off
+Persistent=true
+
+# Run once per day at 11:00 AM
+OnCalendar=*-*-* 11:00:00
+
+# File describing job to execute
+Unit=twitch_download.service
+
+[Install]
+WantedBy=timers.target
