@@ -48,10 +48,12 @@ wait_for_ytdlp_to_finish() {
 }
 
 # Get file stats and check if ready to be processed
-# Sets global variables: file_mtime_seconds, file_size_bytes, file_diff_sec, file_now_seconds
+# Sets: file_mtime_seconds, file_size_bytes, file_diff_sec, file_now_seconds
 # Returns 0 (true) if ready, 1 (false) if not
+# Logs reason if file is not ready (when $2 is "verbose")
 get_file_stats_and_check_ready() {
 	local f="$1"
+	local verbose="$2"
 	file_now_seconds=$(date +%s)
 	# Get mtime in seconds + size
 	local stat_data=$(stat --print '%Z %s' "$f" 2>/dev/null)
@@ -62,12 +64,16 @@ get_file_stats_and_check_ready() {
 	
 	# Split string on whitespace and convert to array
 	stat_data=(${(@s: :)stat_data})
-	file_mtime_seconds=${stat_data[@]:0:1}  # same as ${stat_data[1]}, note that echo ${(t)mtime_seconds} returns scalar
+	file_mtime_seconds=${stat_data[@]:0:1}  # same as ${stat_data[1]}
 	file_size_bytes=${stat_data[@]:1:2}     # same as ${stat_data[2]}
 	file_diff_sec=$((${file_now_seconds} - ${file_mtime_seconds}))
 	
 	# File must be larger than 1000 bytes
 	if [[ ${file_size_bytes} -le 1000 ]]; then
+		if [[ "$verbose" == "verbose" ]]; then
+			echo "${YELLOW}$(basename "$f") is ${file_size_bytes}" \
+			     "bytes, too small. Ignoring...${RESET}"
+		fi
 		return 1
 	fi
 	
@@ -76,6 +82,12 @@ get_file_stats_and_check_ready() {
 		return 0
 	fi
 	
+	# File is still being written to
+	if [[ "$verbose" == "verbose" ]]; then
+		echo "${MAGENTA}$(basename "$f") is probably still being" \
+		     "written to. Last changed ${file_diff_sec} seconds" \
+		     "ago.${RESET}"
+	fi
 	return 1
 }
 
@@ -111,23 +123,20 @@ for orig dest in "${(@kv)destinations}"; do
 
 	# echo "Scanning for files to move from $orig -> $dest"
 
-	# (N) glob qualifier equivalent to "setopt null_glob" to avoid getting a (blocking) error if no file is found
+	# (N) glob qualifier equivalent to "setopt null_glob"
+	# to avoid getting a (blocking) error if no file is found
 	for f in ${orig}/*.${TS_EXT}(N); do
 		filename="$(basename $f)"
 		
-		# Check if file is ready for processing (also populates file_* variables)
-		if ! get_file_stats_and_check_ready "$f"; then
-			# File is not ready - log the reason using the populated variables
-			if [[ ${file_size_bytes} -le 1000 ]]; then
-				echo "${YELLOW}${orig}/${filename} is ${file_size_bytes} bytes, too small to be a valid media file. Ignoring...${RESET}"
-			else
-				echo "${MAGENTA}$filename is probably still being written to. Last changed ${file_diff_sec} seconds ago.${RESET}"
-			fi
+		# Check if file is ready for processing
+		# (also populates file_* variables and logs if not ready)
+		if ! get_file_stats_and_check_ready "$f" "verbose"; then
 			continue
 		fi
 		
-		# File is ready to process - use the already-fetched stats for logging
-		echo "${filename} was modified $((${file_diff_sec}/60)) minutes ago (more than ${MAX_TIME_DIFF} minutes ago)."
+		# File is ready - use the already-fetched stats for logging
+		echo "${filename} was modified $((${file_diff_sec}/60))" \
+		     "minutes ago (more than ${MAX_TIME_DIFF} minutes ago)."
 		
 		dest_filename="${filename%.ts}.mp4"
 		echo "Transcoding to: $dest/$dest_filename"
@@ -136,17 +145,23 @@ for orig dest in "${(@kv)destinations}"; do
 		ffmpeg_exit=$?
 
 		if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
-			echo "${GREEN}Transcoded $f to $dest/$dest_filename.${RESET}";
+			echo "${GREEN}Transcoded $f to" \
+			     "$dest/$dest_filename.${RESET}";
 			echo "Removing $f from source..."
 			rm $f
 		else
-			echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}. Trying to move source file instead of transcoding...${RESET}"
+			echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}." \
+			     "Trying to move source file instead of" \
+			     "transcoding...${RESET}"
 			mkdir -p "$dest"
 			mv "$f" "$dest/$filename"
 			if [[ $? -eq 0 ]]; then
-				echo "${YELLOW}Moved $f to $dest/$filename instead of transcoding!${RESET}"
+				echo "${YELLOW}Moved $f to $dest/$filename" \
+				     "instead of transcoding!${RESET}"
 			else
-				echo "${RED}Something went wrong trying to move ${f} to ${dest}/${filename}. Please investigate!${RESET}"
+				echo "${RED}Something went wrong trying to move" \
+				     "${f} to ${dest}/${filename}." \
+				     "Please investigate!${RESET}"
 			fi
 		fi
 	done
