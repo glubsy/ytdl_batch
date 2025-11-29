@@ -120,6 +120,8 @@ Marimari_en:
   directory_name: "marimari_en"
   author_name: ["Marimari_en", "marimari"]
   channel_id: "marimari_en"
+  title_overrides:
+    - "(!merch)"
 
 Mikanthemink:
   directory_name: "mikanthemink"
@@ -191,3 +193,5 @@ Yukoob:
   directory_name: "yukoob"
   author_name: ["Yukoob", "yukoob"]
   channel_id: "yukoob"
+  title_overrides:
+    - "★ !discord"
