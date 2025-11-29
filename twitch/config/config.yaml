@@ -181,6 +181,8 @@ Sobuuo:
   directory_name: "sobuuo"
   author_name: ["Sobuuo", "sobuuo"]
   channel_id: "sobuuo"
+  title_overrides:
+    - "!discord !fone"
 
 Tatsukkowai:
   directory_name: "tatsukkowai"
