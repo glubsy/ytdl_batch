@@ -30,6 +30,7 @@ source "${config_file}"
 
 MAX_TIME_DIFF=10  # minutes
 TS_EXT="ts"  # file extension to look for
+VERBOSE=true  # Set to true to log files that are not ready for processing
 
 RED="\u001b[31m"
 GREEN="\u001b[32m"
@@ -50,10 +51,9 @@ wait_for_ytdlp_to_finish() {
 # Get file stats and check if ready to be processed
 # Sets: file_mtime_seconds, file_size_bytes, file_diff_sec, file_now_seconds
 # Returns 0 (true) if ready, 1 (false) if not
-# Logs reason if file is not ready (when $2 is "verbose")
+# Logs reason if file is not ready (when global VERBOSE is true)
 get_file_stats_and_check_ready() {
 	local f="$1"
-	local verbose="$2"
 	file_now_seconds=$(date +%s)
 	# Get mtime in seconds + size
 	local stat_data=$(stat --print '%Z %s' "$f" 2>/dev/null)
@@ -70,7 +70,7 @@ get_file_stats_and_check_ready() {
 	
 	# File must be larger than 1000 bytes
 	if [[ ${file_size_bytes} -le 1000 ]]; then
-		if [[ "$verbose" == "verbose" ]]; then
+		if [[ "$VERBOSE" == "true" ]]; then
 			echo "${YELLOW}$(basename "$f") is ${file_size_bytes}" \
 			     "bytes, too small. Ignoring...${RESET}"
 		fi
@@ -83,7 +83,7 @@ get_file_stats_and_check_ready() {
 	fi
 	
 	# File is still being written to
-	if [[ "$verbose" == "verbose" ]]; then
+	if [[ "$VERBOSE" == "true" ]]; then
 		echo "${MAGENTA}$(basename "$f") is probably still being" \
 		     "written to. Last changed ${file_diff_sec} seconds" \
 		     "ago.${RESET}"
@@ -130,7 +130,7 @@ for orig dest in "${(@kv)destinations}"; do
 		
 		# Check if file is ready for processing
 		# (also populates file_* variables and logs if not ready)
-		if ! get_file_stats_and_check_ready "$f" "verbose"; then
+		if ! get_file_stats_and_check_ready "$f"; then
 			continue
 		fi
 		
