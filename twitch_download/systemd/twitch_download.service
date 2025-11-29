@@ -4,7 +4,7 @@ Requires=remote-twitch_monitor.mount
 
 [Service]
 Type=oneshot
-ExecStart=twitch_download.sh
+ExecStart=%h/bin/twitch_download.sh
 
 [Install]
 WantedBy=default.target
