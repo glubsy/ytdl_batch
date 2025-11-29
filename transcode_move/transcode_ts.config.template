@@ -4,7 +4,7 @@ declare -A destinations
 
 default_destination="/storage/vtubers_raw_dump/vtubers_dump/processing"
 
-base_origin="/remote/twitch-monitor"
+base_origin="/remote/twitch_monitor"
 base_dest="/storage/vtubers_raw_dump/vtubers_dump"
 
 destinations=(

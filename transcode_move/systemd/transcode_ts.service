@@ -1,6 +1,6 @@
 [Unit]
 Description=Transcode remote TS files into locally stored MP4 files
-Requires=remote-twitch-monitor.mount
+Requires=remote-twitch_monitor.mount
 
 [Service]
 Type=oneshot
