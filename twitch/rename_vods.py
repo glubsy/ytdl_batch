@@ -212,54 +212,54 @@ def sanitize_filename(title: str) -> str:
 def apply_title_overrides(title: str, title_overrides: list[str]) -> str:
     """
     Apply title overrides to remove specified substrings or regex patterns from title.
-    
+
     Args:
         title: The original title string
         title_overrides: List of strings to remove. If a string contains {{ }} pattern,
                         the content inside is treated as a regex pattern.
-    
+
     Returns:
         Title with specified overrides removed and leading whitespace cleaned
     """
     if not title_overrides:
         return title
-    
+
     result = title
-    
+
     for override in title_overrides:
         if '{{' in override and '}}' in override:
-            # Build a regex pattern where {{ }} parts are treated as regex 
+            # Build a regex pattern where {{ }} parts are treated as regex
             # and everything else is treated as literal text
             # Example: "- A test (day {{ \\d+ }})" becomes "- A test \(day \d+\)"
             try:
                 # Split the override into parts, escaping literal parts and keeping regex parts
                 pattern_parts = []
                 current_pos = 0
-                
+
                 # Find all {{ }} matches
                 regex_matches = list(re.finditer(r'\{\{\s*(.*?)\s*\}\}', override))
-                
+
                 for match in regex_matches:
                     # Add literal text before the {{ }} as escaped
                     literal_text = override[current_pos:match.start()]
                     if literal_text:
                         pattern_parts.append(re.escape(literal_text))
-                    
+
                     # Add the regex pattern inside {{ }} without escaping
                     regex_content = match.group(1)
                     pattern_parts.append(regex_content)
-                    
+
                     current_pos = match.end()
-                
+
                 # Add any remaining literal text after the last {{ }}
                 remaining_text = override[current_pos:]
                 if remaining_text:
                     pattern_parts.append(re.escape(remaining_text))
-                
+
                 # Combine all parts into final regex pattern
                 final_pattern = ''.join(pattern_parts)
                 result = re.sub(final_pattern, '', result, flags=re.IGNORECASE)
-                
+
             except re.error as exc:
                 log.warning(
                     "Invalid regex pattern in title override '%s': %s",
@@ -268,7 +268,7 @@ def apply_title_overrides(title: str, title_overrides: list[str]) -> str:
         else:
             # Simple substring removal (case-insensitive)
             result = re.sub(re.escape(override), '', result, flags=re.IGNORECASE)
-    
+
     # Clean up leading/trailing whitespace and multiple spaces
     result = ' '.join(result.split())
     return result
@@ -278,41 +278,59 @@ def parse_duration_to_seconds(duration_str: str) -> int:
     """
     Parse Twitch duration format to seconds.
     Examples: "10s" -> 10, "4m40s" -> 280, "2h46m14s" -> 9974
-    
+
     Args:
         duration_str: Duration string in format like "1h23m45s", "5m30s", "45s"
-    
+
     Returns:
         Total duration in seconds
     """
     import re
-    
+
     total_seconds = 0
-    
+
     # Extract hours
     hours_match = re.search(r'(\d+)h', duration_str)
     if hours_match:
         total_seconds += int(hours_match.group(1)) * 3600
-    
+
     # Extract minutes
     minutes_match = re.search(r'(\d+)m', duration_str)
     if minutes_match:
         total_seconds += int(minutes_match.group(1)) * 60
-    
+
     # Extract seconds
     seconds_match = re.search(r'(\d+)s', duration_str)
     if seconds_match:
         total_seconds += int(seconds_match.group(1))
-    
+
     return total_seconds
 
 
 def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
     """
-    Find the best matching video from API data based on date proximity.
+    Find the best matching video from API data.
+    First attempts to match by stream_id extracted from filename.
+    Falls back to date-based matching if stream_id match fails.
     Filters out videos shorter than 10 seconds to avoid stub VODs.
     Returns the video dict if found, None otherwise.
     """
+    # First, try to match by stream_id from filename
+    file_video_id = extract_video_id(file_path.name)
+    if file_video_id:
+        # Try to find a video with matching stream_id
+        for video in videos:
+            stream_id = video.get('stream_id')
+            if stream_id and str(stream_id) == file_video_id:
+                log.info(
+                    "Found exact stream_id match for \"%s\": [%s] \"%s\" (stream_id: %s)",
+                    file_path.name, video['id'], video['title'], stream_id
+                )
+                return video
+
+    # Fall back to date-based matching
+    log.debug("No stream_id match found, falling back to date-based matching for: %s", file_path.name)
+
     file_date = extract_date_from_filename(file_path.name)
     if not file_date:
         log.error("Could not extract date from filename: %s", file_path.name)
@@ -331,7 +349,7 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                 "Filtering out short VOD (<%ds): [%s] %s (%s)",
                 10, video['id'], video['title'], duration_str
             )
-    
+
     if len(filtered_videos) < len(videos):
         log.debug(
             "Filtered out %d short VODs (<%ds), %d remaining",
@@ -349,14 +367,14 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
             video_date = video_date.replace(tzinfo=None)
 
             time_diff = abs((file_date - video_date).total_seconds())
-            
+
             # Check if video started before or after the file timestamp
             # Negative means video started before file (which is expected)
             time_offset = (video_date - file_date).total_seconds()
-            
+
             log.debug(
                 "  Checking VOD [%s] %s (created: %s, time_diff: %.1f seconds, offset: %+.1fs)",
-                video['id'], video.get('duration', 'N/A'), 
+                video['id'], video.get('duration', 'N/A'),
                 video['created_at'], time_diff, time_offset
             )
 
@@ -365,10 +383,10 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
             max_time_diff_seconds = 5 * 60  # 5 minutes
             if time_diff < max_time_diff_seconds:
                 # Prefer VODs that started before the file timestamp
-                # When time differences are very close (within 2 minutes), 
+                # When time differences are very close (within 2 minutes),
                 # prefer the one that started earlier
                 is_better_match = False
-                
+
                 if best_match is None:
                     # First match
                     is_better_match = True
@@ -380,7 +398,7 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                         best_offset = (datetime.fromisoformat(
                             best_match['created_at'].replace('Z', '+00:00')
                         ).replace(tzinfo=None) - file_date).total_seconds()
-                        
+
                         # When close, prefer VOD that started before file (negative offset)
                         if time_offset < best_offset:
                             is_better_match = True
@@ -396,7 +414,7 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                     elif time_diff < min_time_diff:
                         # Time difference is significant (>2 min), pick closer one
                         is_better_match = True
-                
+
                 if is_better_match:
                     min_time_diff = time_diff
                     best_match = video
@@ -426,7 +444,7 @@ def generate_new_filename(file_path: Path, video: dict, channel_config: dict | N
     Generate new filename with updated title and video ID.
     Preserves the original date/time prefix and file extension.
     Applies title overrides if configured for the channel.
-    
+
     Args:
         file_path: Path to the original video file
         video: Video metadata from Twitch API
@@ -452,7 +470,7 @@ def generate_new_filename(file_path: Path, video: dict, channel_config: dict | N
     author = author_match.group(1) if author_match else "Unknown"
 
     clean_title = sanitize_filename(video['title'])
-    
+
     # Apply title overrides if configured for this channel
     if channel_config and (title_overrides := channel_config.get('title_overrides')):
         clean_title = apply_title_overrides(clean_title, title_overrides)
