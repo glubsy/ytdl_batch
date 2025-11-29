@@ -12,7 +12,7 @@ BASE_STORAGE="/storage/vtubers_raw_04/vtubers_dump"
 # Format: channel_name|output_path|author_name
 
 declare -a CHANNELS=(
-    "kana|${BASE_STORAGE}/kamiko_kana/twitch|Kamiko Kana"
+    "kana|${BASE_STORAGE}/kamiko_kana|Kamiko Kana"
     "nokko|${BASE_STORAGE}/nokko|Nokko"
     "sobuuo|${BASE_STORAGE}/sobuuo|sobuuo"
     # Add more channels here in the same format:
@@ -49,7 +49,7 @@ scan_and_update_archive() {
         # Extract Twitch ID using regex pattern [vDIGITS]
         if [[ $(basename "$file") =~ \[v([0-9]+)\] ]]; then
             local video_id="v${BASH_REMATCH[1]}"
-            local archive_entry="twitch ${video_id}"
+            local archive_entry="twitchvod ${video_id}"
             
             # Check if this ID is already in the archive
             if ! grep -qF "${archive_entry}" "${ARCHIVE_FILE}"; then
@@ -74,7 +74,7 @@ process_channel() {
     local channel_name="$2"
     local author_name="$3"
     
-    echo "Processing channel: ${author_name} (${channel_name})"
+    echo "Processing channel: ${author_name} (channel name \"${channel_name}\")"
     echo "Output path: ${output_path}"
     
     # Check if output directory exists, create if not
