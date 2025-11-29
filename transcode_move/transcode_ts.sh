@@ -2,7 +2,6 @@
 
 
 # Purpose: move .ts files from one location to a destination while transcoding them with ffmpeg.
-
 # 0. load config file, setting location to scan, destinations depending on initial location of file 
 # (need a default location if a change in the initial location was not anticipated)
 # 1. list files with .ts extension
@@ -37,6 +36,19 @@ GREEN="\u001b[32m"
 YELLOW="\u001b[33;1m"
 MAGENTA="\u001b[35;1m"
 RESET="\u001b[0m"
+
+# Wait for ytdlp processes to finish before starting transcoding
+wait_for_ytdlp_to_finish() {
+    echo "Checking for running ytdlp processes..."
+    while pgrep -x ytdlp > /dev/null || pgrep -x yt-dlp > /dev/null; do
+        echo "ytdlp is running, waiting 5 minutes before checking again..."
+        sleep 300  # Wait 5 minutes
+    done
+    echo "No ytdlp processes detected, proceeding with transcoding"
+}
+
+# Wait for any ytdlp processes to finish before starting, to reduce IO pressure
+wait_for_ytdlp_to_finish
 
 # Scan for ts files and transcode them into destination
 for orig dest in "${(@kv)destinations}"; do

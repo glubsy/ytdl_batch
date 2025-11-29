@@ -22,6 +22,16 @@ declare -a CHANNELS=(
 # Archive file path
 ARCHIVE_FILE="${HOME}/archive.txt"
 
+# Wait for ffmpeg processes to finish before starting downloads
+wait_for_ffmpeg_to_finish() {
+    echo "Checking for running ffmpeg processes..."
+    while pgrep -x ffmpeg > /dev/null; do
+        echo "ffmpeg is running, waiting 5 minutes before checking again..."
+        sleep 300  # Wait 5 minutes
+    done
+    echo "No ffmpeg processes detected, proceeding with downloads"
+}
+
 # Function to scan existing files and update archive
 scan_and_update_archive() {
     local output_path="$1"
@@ -95,6 +105,9 @@ process_channel() {
 main() {
     echo "Starting Twitch download script"
     echo "================================"
+    
+    # Wait for any ffmpeg processes to finish before starting
+    wait_for_ffmpeg_to_finish
     
     # Process each channel
     for channel_entry in "${CHANNELS[@]}"; do
