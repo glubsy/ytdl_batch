@@ -274,9 +274,43 @@ def apply_title_overrides(title: str, title_overrides: list[str]) -> str:
     return result
 
 
+def parse_duration_to_seconds(duration_str: str) -> int:
+    """
+    Parse Twitch duration format to seconds.
+    Examples: "10s" -> 10, "4m40s" -> 280, "2h46m14s" -> 9974
+    
+    Args:
+        duration_str: Duration string in format like "1h23m45s", "5m30s", "45s"
+    
+    Returns:
+        Total duration in seconds
+    """
+    import re
+    
+    total_seconds = 0
+    
+    # Extract hours
+    hours_match = re.search(r'(\d+)h', duration_str)
+    if hours_match:
+        total_seconds += int(hours_match.group(1)) * 3600
+    
+    # Extract minutes
+    minutes_match = re.search(r'(\d+)m', duration_str)
+    if minutes_match:
+        total_seconds += int(minutes_match.group(1)) * 60
+    
+    # Extract seconds
+    seconds_match = re.search(r'(\d+)s', duration_str)
+    if seconds_match:
+        total_seconds += int(seconds_match.group(1))
+    
+    return total_seconds
+
+
 def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
     """
     Find the best matching video from API data based on date proximity.
+    Filters out videos shorter than 10 seconds to avoid stub VODs.
     Returns the video dict if found, None otherwise.
     """
     file_date = extract_date_from_filename(file_path.name)
@@ -284,10 +318,30 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
         log.error("Could not extract date from filename: %s", file_path.name)
         return
 
+    # Filter out very short videos (less than 10 seconds)
+    # These are typically stub VODs or test streams
+    filtered_videos = []
+    for video in videos:
+        duration_str = video.get('duration', '0s')
+        duration_seconds = parse_duration_to_seconds(duration_str)
+        if duration_seconds >= 10:
+            filtered_videos.append(video)
+        else:
+            log.debug(
+                "Filtering out short VOD (<%ds): [%s] %s (%s)",
+                10, video['id'], video['title'], duration_str
+            )
+    
+    if len(filtered_videos) < len(videos):
+        log.debug(
+            "Filtered out %d short VODs (<%ds), %d remaining",
+            len(videos) - len(filtered_videos), 10, len(filtered_videos)
+        )
+
     best_match = None
     min_time_diff = float('inf')
 
-    for video in videos:
+    for video in filtered_videos:
         try:
             # Parse Twitch API date format (ISO 8601)
             video_date = datetime.fromisoformat(video['created_at'].replace('Z', '+00:00'))
@@ -295,12 +349,61 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
             video_date = video_date.replace(tzinfo=None)
 
             time_diff = abs((file_date - video_date).total_seconds())
+            
+            # Check if video started before or after the file timestamp
+            # Negative means video started before file (which is expected)
+            time_offset = (video_date - file_date).total_seconds()
+            
+            log.debug(
+                "  Checking VOD [%s] %s (created: %s, time_diff: %.1f seconds, offset: %+.1fs)",
+                video['id'], video.get('duration', 'N/A'), 
+                video['created_at'], time_diff, time_offset
+            )
 
-            # Consider it a match if within 2 hours (7200 seconds)
-            hours_in_seconds = 2 * 60 * 60
-            if time_diff < hours_in_seconds and time_diff < min_time_diff:
-                min_time_diff = time_diff
-                best_match = video
+            # Consider it a match if within 5 minutes (300 seconds) for better accuracy
+            # This prevents matching files to VODs that are too far apart
+            max_time_diff_seconds = 5 * 60  # 5 minutes
+            if time_diff < max_time_diff_seconds:
+                # Prefer VODs that started before the file timestamp
+                # When time differences are very close (within 2 minutes), 
+                # prefer the one that started earlier
+                is_better_match = False
+                
+                if best_match is None:
+                    # First match
+                    is_better_match = True
+                else:
+                    # Check if both matches are very close (within 30 seconds)
+                    # Only then prefer the earlier VOD
+                    if abs(time_diff - min_time_diff) < 30:
+                        # Get offset of current best match
+                        best_offset = (datetime.fromisoformat(
+                            best_match['created_at'].replace('Z', '+00:00')
+                        ).replace(tzinfo=None) - file_date).total_seconds()
+                        
+                        # When close, prefer VOD that started before file (negative offset)
+                        if time_offset < best_offset:
+                            is_better_match = True
+                            log.debug(
+                                "    -> Preferring earlier VOD (offset %+.1fs vs %+.1fs, time_diff %.1fs vs %.1fs)",
+                                time_offset, best_offset, time_diff, min_time_diff
+                            )
+                        else:
+                            log.debug(
+                                "    -> Keeping current best (offset %+.1fs is not earlier than %+.1fs)",
+                                time_offset, best_offset
+                            )
+                    elif time_diff < min_time_diff:
+                        # Time difference is significant (>2 min), pick closer one
+                        is_better_match = True
+                
+                if is_better_match:
+                    min_time_diff = time_diff
+                    best_match = video
+                    log.debug(
+                        "    -> New best match! time_diff: %.1f seconds (%.2f minutes), offset: %+.1fs",
+                        time_diff, time_diff/60, time_offset
+                    )
 
         except (ValueError, KeyError) as exc:
             log.error(
