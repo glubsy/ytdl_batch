@@ -1,0 +1,10 @@
+[Unit]
+Description=Transcode remote TS files into locally stored MP4 files
+Requires=remote-twitch_monitor.mount
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/transcode_ts.sh
+
+[Install]
+WantedBy=default.target

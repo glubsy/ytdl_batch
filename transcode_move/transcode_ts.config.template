@@ -1,0 +1,41 @@
+# Original location to destination
+
+declare -A destinations
+
+default_destination="/storage/vtubers_raw_dump/vtubers_dump/processing"
+
+base_origin="/remote/twitch_monitor"
+base_dest="/storage/vtubers_raw_dump/vtubers_dump"
+
+destinations=(
+"${base_origin}/chibidoki" "${base_dest}/chibidoki"
+"${base_origin}/kamiko_kana" "${base_dest}/kamiko_kana"
+"${base_origin}/vedal987" "${base_dest}/vedal987"
+"${base_origin}/fallenshadow" "${base_dest}/fallenshadow"
+"${base_origin}/marimari_en" "${base_dest}/marimari_en"
+"${base_origin}/lilyhops" "${base_dest}/lilyhops"
+"${base_origin}/inislein" "${base_dest}/inislein"
+"${base_origin}/Matsuro Meru" "${base_dest}/matsuro_meru"
+"${base_origin}/rurukaruna" "${base_dest}/rurukaruna"
+"${base_origin}/mangobtuber" "${base_dest}/mangobtuber"
+"${base_origin}/krumroll" "${base_dest}/krumroll"
+"${base_origin}/anny" "${base_dest}/anny"
+"${base_origin}/cuemew" "${base_dest}/cuemew"
+"${base_origin}/irinakumai" "${base_dest}/irinakumai"
+"${base_origin}/runa" "${base_dest}/runa"
+"${base_origin}/panko" "${base_dest}/panko"
+"${base_origin}/tatsukkowai" "${base_dest}/tatsukkowai"
+"${base_origin}/amiomoe" "${base_dest}/amiomoe"
+"${base_origin}/kloekroc" "${base_dest}/kloekroc"
+"${base_origin}/kam0tan" "${base_dest}/kam0tan"
+"${base_origin}/mokakurai" "${base_dest}/mokakurai"
+"${base_origin}/marichanduh" "${base_dest}/marichanduh"
+"${base_origin}/natsutsuki_shiki" "${base_dest}/natsutsuki_shiki"
+"${base_origin}/mikanthemink" "${base_dest}/mikanthemink"
+"${base_origin}/rurinemui" "${base_dest}/rurinemui"
+"${base_origin}/dreamyriko" "${base_dest}/dreamyriko"
+"${base_origin}/yukoob" "${base_dest}/yukoob"
+"${base_origin}/nekumavt" "${base_dest}/nekumavt"
+"${base_origin}/fraiki" "${base_dest}/fraiki"
+"${base_origin}/penkoro" "${base_dest}/penkoro"
+)

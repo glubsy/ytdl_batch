@@ -1,0 +1,10 @@
+[Unit]
+Description=Download Twitch videos for configured channels
+Requires=remote-twitch_monitor.mount
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/twitch_download.sh
+
+[Install]
+WantedBy=default.target
