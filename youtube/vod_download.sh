@@ -137,6 +137,8 @@ download_channel() {
     if [[ -f "$PO_TOKEN_PATH" ]]; then
         ytdlp_args+=(--extractor-args "youtube:player-client=web,default;po_token=web+$(cat "$PO_TOKEN_PATH")")
         ytdlp_args+=(--extractor-args "youtube:po_token=web.subs+$(cat "$PO_TOKEN_PATH")")
+        ytdlp_args+=(--extractor-args "youtube:po_token=web_safari.gvs+$(cat "$PO_TOKEN_PATH")")
+        ytdlp_args+=(--extractor-args "youtube:po_token=web.gvs+$(cat "$PO_TOKEN_PATH")")
     fi
 
     ytdlp_args+=("$youtube_url")
