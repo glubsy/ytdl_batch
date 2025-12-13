@@ -123,6 +123,8 @@ download_channel() {
         --embed-thumbnail
         --write-subs
         --sub-langs "live_chat"
+        --remote-components ejs:github
+        --match-filter '!is_live'
         -S "res:480,+codec:h264:m4a"
     )
 
