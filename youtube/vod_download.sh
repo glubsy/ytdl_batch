@@ -144,7 +144,7 @@ download_channel() {
     local exit_code=${PIPESTATUS[0]}
 
     # Check for rate limiting errors (429 or "too many requests")
-    if grep -qi -E "(429|too many requests)" "$temp_output"; then
+    if grep -qi -E "(too many requests)" "$temp_output"; then
         echo ""
         echo "⚠️  ERROR: Rate limiting detected for channel: $channel_name"
         echo "⚠️  YouTube is throttling requests (HTTP 429 or 'Too Many Requests')"
