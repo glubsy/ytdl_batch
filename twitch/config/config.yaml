@@ -128,10 +128,10 @@ Mikanthemink:
   author_name: ["Mikanthemink", "mikanthemink"]
   channel_id: "mikanthemink"
 
-Moka Kurai:
-  directory_name: "mokakurai"
-  author_name: ["Moka Kurai", "mokakurai"]
-  channel_id: "mokakurai"
+Kirari Yagi:
+  directory_name: "kirariyagi"
+  author_name: ["Moka Kurai", "mokakurai", "kirariyagi"]
+  channel_id: "kirariyagi"
 
 Natsutsuki Shiki:
   directory_name: "natsutsuki_shiki"
@@ -196,9 +196,9 @@ vedal987:
   author_name: ["vedal987"]
   channel_id: "vedal987"
 
-Yukoob:
-  directory_name: "yukoob"
-  author_name: ["Yukoob", "yukoob"]
-  channel_id: "yukoob"
+Yoob:
+  directory_name: "yoob"
+  author_name: ["Yukoob", "yukoob", "yoob", "yoob_ch"]
+  channel_id: "yoob_ch"
   title_overrides:
     - "★ !discord"
