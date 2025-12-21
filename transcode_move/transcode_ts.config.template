@@ -28,7 +28,7 @@ destinations=(
 "${base_origin}/amiomoe" "${base_dest}/amiomoe"
 "${base_origin}/kloekroc" "${base_dest}/kloekroc"
 "${base_origin}/kam0tan" "${base_dest}/kam0tan"
-"${base_origin}/mokakurai" "${base_dest}/mokakurai"
+"${base_origin}/kirariyagi" "${base_dest}/kirariyagi"
 "${base_origin}/marichanduh" "${base_dest}/marichanduh"
 "${base_origin}/natsutsuki_shiki" "${base_dest}/natsutsuki_shiki"
 "${base_origin}/mikanthemink" "${base_dest}/mikanthemink"
