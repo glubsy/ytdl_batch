@@ -145,7 +145,14 @@ def get_user_id(channel_name: str, access_token: str) -> str:
         'login': channel_name
     }
     response = requests.get(url, headers=headers, params=params)
-    return response.json()['data'][0]['id']
+    
+    if not (data := response.json().get('data', [])):
+        raise ValueError(f"Channel '{channel_name}' not found")
+    
+    if not (id := data[0].get('id')):
+        raise ValueError(f"User ID not found for channel '{channel_name}'")
+    
+    return id
 
 
 def main(args: list[str]) -> None:
