@@ -387,11 +387,12 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                 video['created_at'], time_diff, time_offset
             )
 
-            # Consider it a match if within 1 hour (3600 seconds)
+            # Consider it a match if within 1 hour and 5 minutes (3900 seconds)
             # This accounts for timezone differences between local file timestamps and UTC API times
+            # The extra 5 minutes provides buffer for minor time discrepancies
             # while still preventing matching to completely unrelated VODs
-            max_time_diff_seconds = 60 * 60  # 1 hour
-            if time_diff < max_time_diff_seconds:
+            max_time_diff_seconds = 65 * 60  # 1 hour 5 minutes
+            if time_diff <= max_time_diff_seconds:
                 # Prefer VODs that started before the file timestamp
                 # When time differences are very close (within 2 minutes),
                 # prefer the one that started earlier
