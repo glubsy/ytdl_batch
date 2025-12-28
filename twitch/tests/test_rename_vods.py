@@ -34,7 +34,8 @@ with patch("builtins.open", mock_open(read_data=mock_config_data)):
             find_matching_video,
             generate_new_filename,
             update_filenames,
-            apply_title_overrides
+            apply_title_overrides,
+            parse_duration_to_seconds
         )
 
 
@@ -708,6 +709,324 @@ class TestFilenameGenerationWithOverrides(unittest.TestCase):
         
         expected = "20241124 14-30-00 [TestStreamer] New Stream Title [best][1234567890].mp4"
         self.assertEqual(result, expected)
+
+
+class TestFindMatchingVideoRegression(unittest.TestCase):
+    """Test cases to prevent regression in video matching logic."""
+    
+    def test_file_with_video_id_no_match_returns_none(self):
+        """
+        REGRESSION TEST: Files with existing video IDs that don't match API
+        should return None to avoid false matches.
+        
+        This prevents Part 1 of a split stream (with deleted VOD) from being
+        incorrectly matched to Part 2 based on timestamp proximity.
+        """
+        file_path = Path("20251105 18-39-15 [author] title part 1 [best][2610549917].mp4")
+        
+        # API only has Part 2 (the original Part 1 VOD was deleted)
+        videos = [
+            {
+                'id': '2610552434',
+                'stream_id': 2610552434,
+                'title': 'title part 2',
+                'created_at': '2025-11-05T18:40:00Z',
+                'duration': '2h30m15s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        # Should return None because file has video ID 2610549917 but API doesn't have it
+        self.assertIsNone(result, 
+            "File with video ID not found in API should return None to avoid false match")
+    
+    def test_file_without_video_id_matches_by_date(self):
+        """
+        Files without video IDs (empty brackets) should use date-based matching.
+        """
+        file_path = Path("20251222 07-00-35 [author]  [best][].mp4")
+        
+        videos = [
+            {
+                'id': '2650137308',
+                'stream_id': 2650137308,
+                'title': 'some title',
+                'created_at': '2025-12-22T06:00:30Z',  # ~1 hour before file timestamp
+                'duration': '5h46m12s'
+            },
+            {
+                'id': '2648840961',
+                'stream_id': 2648840961,
+                'title': 'Different title',
+                'created_at': '2025-12-20T18:56:22Z',  # Much earlier
+                'duration': '33m50s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result, "File without video ID should match by date")
+        self.assertEqual(result['id'], '2650137308', 
+            "Should match closest VOD within time threshold")
+    
+    def test_timezone_offset_within_threshold(self):
+        """
+        Test that timezone differences (up to 1 hour 5 min) are handled correctly.
+        Files timestamped in local time should match VODs in UTC time.
+        """
+        file_path = Path("20251226 06-58-59 [author]  [best][].mp4")
+        
+        # VOD created at 05:58:56 UTC, file at 06:58:59 local = exactly 1 hour + 3 seconds diff
+        videos = [
+            {
+                'id': '2653193045',
+                'stream_id': 2653193045,
+                'title': 'title here',
+                'created_at': '2025-12-26T05:58:56Z',
+                'duration': '3h45m27s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result, 
+            "Should match VOD with ~1 hour timezone difference")
+        self.assertEqual(result['id'], '2653193045')
+    
+    def test_time_threshold_boundary_exact(self):
+        """
+        Test boundary condition: exactly at 1 hour 5 minutes (3900 seconds).
+        """
+        file_path = Path("20251222 07-00-00 [test]  [best][].mp4")
+        
+        # VOD exactly 3900 seconds (65 minutes) before file
+        videos = [
+            {
+                'id': '2650000001',
+                'stream_id': 2650000001,
+                'title': 'Boundary test',
+                'created_at': '2025-12-22T05:55:00Z',  # 65 minutes before file
+                'duration': '2h00m00s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result, 
+            "Should match VOD exactly at threshold (3900 seconds)")
+    
+    def test_time_threshold_just_over(self):
+        """
+        Test boundary condition: just over 1 hour 5 minutes should not match.
+        """
+        file_path = Path("20251222 07-00-00 [test]  [best][].mp4")
+        
+        # VOD 3901 seconds (just over threshold) before file
+        videos = [
+            {
+                'id': '2650000002',
+                'stream_id': 2650000002,
+                'title': 'Over threshold',
+                'created_at': '2025-12-22T05:54:59Z',  # 65min 1sec before
+                'duration': '2h00m00s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNone(result, 
+            "Should not match VOD over threshold (>3900 seconds)")
+    
+    def test_filters_out_short_vods(self):
+        """
+        VODs shorter than 10 seconds should be filtered out.
+        These are typically stub VODs or test streams.
+        """
+        file_path = Path("20251224 07-00-00 [test]  [best][].mp4")
+        
+        videos = [
+            {
+                'id': '2651000001',
+                'stream_id': 2651000001,
+                'title': 'Short stub VOD',
+                'created_at': '2025-12-24T07:00:01Z',  # Perfect time match
+                'duration': '5s'  # But too short
+            },
+            {
+                'id': '2651000002',
+                'stream_id': 2651000002,
+                'title': 'Valid VOD',
+                'created_at': '2025-12-24T06:58:00Z',  # 2 min before
+                'duration': '2h30m00s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result, "Should find a match after filtering short VODs")
+        self.assertEqual(result['id'], '2651000002', 
+            "Should match longer VOD, not the 5-second stub")
+    
+    def test_matches_by_stream_id_priority(self):
+        """
+        Test that stream_id matching takes priority over date matching.
+        """
+        file_path = Path("20251105 18-39-15 [author] stream [best][2610549917].mp4")
+        
+        videos = [
+            {
+                'id': 'v9999999',
+                'stream_id': 2610549917,  # Matches file's video ID
+                'title': 'Correct stream by stream_id',
+                'created_at': '2025-11-03T10:00:00Z',  # Date way off
+                'duration': '3h00m00s'
+            },
+            {
+                'id': '2610550000',
+                'stream_id': 2610550000,
+                'title': 'Different stream',
+                'created_at': '2025-11-05T18:39:20Z',  # Perfect date match
+                'duration': '2h15m00s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result, "Should match by stream_id")
+        self.assertEqual(result['id'], 'v9999999', 
+            "Should prioritize stream_id match over date match")
+    
+    def test_prefers_earlier_vod_when_close(self):
+        """
+        When multiple VODs are within 30 seconds time difference,
+        prefer the one that started before the file timestamp.
+        """
+        file_path = Path("20251225 07-00-00 [test]  [best][].mp4")
+        
+        videos = [
+            {
+                'id': '2652000001',
+                'stream_id': 2652000001,
+                'title': 'Started before file',
+                'created_at': '2025-12-25T06:59:50Z',  # 10 sec before file (negative offset)
+                'duration': '2h00m00s'
+            },
+            {
+                'id': '2652000002',
+                'stream_id': 2652000002,
+                'title': 'Started after file',
+                'created_at': '2025-12-25T07:00:05Z',  # 5 sec after file (positive offset)
+                'duration': '2h00m00s'
+            }
+        ]
+        
+        result = find_matching_video(file_path, videos)
+        
+        self.assertIsNotNone(result)
+        self.assertEqual(result['id'], '2652000001', 
+            "Should prefer VOD that started before file timestamp when both are close")
+
+
+class TestExtractVideoIdEdgeCases(unittest.TestCase):
+    """Test edge cases in video ID extraction."""
+    
+    def test_empty_brackets_returns_none(self):
+        """Empty brackets [best][] should return None."""
+        filename = "20251222 07-00-35 [author]  [best][].mp4"
+        result = extract_video_id(filename)
+        self.assertIsNone(result)
+    
+    def test_whitespace_only_in_brackets_returns_none(self):
+        """Brackets with only whitespace should return None."""
+        filename = "20251222 07-00-35 [author]  [best][   ].mp4"
+        result = extract_video_id(filename)
+        self.assertIsNone(result)
+    
+    def test_valid_video_id_extracted(self):
+        """Valid video ID should be extracted correctly."""
+        filename = "20251105 18-39-15 [author] stream [best][2610549917].mp4"
+        result = extract_video_id(filename)
+        self.assertEqual(result, "2610549917")
+    
+    def test_video_id_starting_with_v(self):
+        """Video IDs starting with 'v' should be extracted."""
+        filename = "20251105 18-39-15 [author] stream [best][v1234567890].mp4"
+        result = extract_video_id(filename)
+        self.assertEqual(result, "v1234567890")
+
+
+class TestExtractDateFromFilenameEdgeCases(unittest.TestCase):
+    """Test date extraction edge cases and boundary conditions."""
+    
+    def test_extract_full_datetime(self):
+        """Extract full datetime YYYYMMDD HH-MM-SS."""
+        filename = "20251222 07-00-35 [author]  [best][].mp4"
+        result = extract_date_from_filename(filename)
+        expected = datetime(2025, 12, 22, 7, 0, 35)
+        self.assertEqual(result, expected)
+    
+    def test_extract_date_only(self):
+        """Extract date only YYYYMMDD."""
+        filename = "20251222 [author]  [best][].mp4"
+        result = extract_date_from_filename(filename)
+        expected = datetime(2025, 12, 22, 0, 0, 0)
+        self.assertEqual(result, expected)
+    
+    def test_invalid_time_components(self):
+        """Invalid time components fall back to date-only extraction."""
+        # Hour >= 24 - should fall back to extracting just the date
+        filename = "20251222 25-00-00 [test] stream.mp4"
+        result = extract_date_from_filename(filename)
+        # Falls back to date-only pattern, so should get the date with time 00:00:00
+        self.assertEqual(result, datetime(2025, 12, 22, 0, 0, 0))
+        
+        # Minute >= 60 - should fall back to date-only
+        filename = "20251222 07-61-00 [test] stream.mp4"
+        result = extract_date_from_filename(filename)
+        self.assertEqual(result, datetime(2025, 12, 22, 0, 0, 0))
+        
+        # Second >= 60 - should fall back to date-only
+        filename = "20251222 07-00-61 [test] stream.mp4"
+        result = extract_date_from_filename(filename)
+        self.assertEqual(result, datetime(2025, 12, 22, 0, 0, 0))
+    
+    def test_no_date_in_filename(self):
+        """Filename without date should return None."""
+        filename = "[author] stream [best][123].mp4"
+        result = extract_date_from_filename(filename)
+        self.assertIsNone(result)
+
+
+class TestParseDurationToSeconds(unittest.TestCase):
+    """Test duration string parsing."""
+    
+    def test_parse_hours_minutes_seconds(self):
+        """Parse full duration with hours, minutes, and seconds."""
+        self.assertEqual(parse_duration_to_seconds("2h46m14s"), 9974)
+        self.assertEqual(parse_duration_to_seconds("5h46m12s"), 20772)
+    
+    def test_parse_minutes_seconds(self):
+        """Parse duration with only minutes and seconds."""
+        self.assertEqual(parse_duration_to_seconds("4m40s"), 280)
+        self.assertEqual(parse_duration_to_seconds("33m50s"), 2030)
+    
+    def test_parse_seconds_only(self):
+        """Parse duration with only seconds."""
+        self.assertEqual(parse_duration_to_seconds("10s"), 10)
+        self.assertEqual(parse_duration_to_seconds("5s"), 5)
+    
+    def test_parse_hours_only(self):
+        """Parse duration with only hours."""
+        self.assertEqual(parse_duration_to_seconds("2h"), 7200)
+    
+    def test_parse_empty_string(self):
+        """Empty string should return 0."""
+        self.assertEqual(parse_duration_to_seconds(""), 0)
+    
+    def test_parse_no_match(self):
+        """String with no duration pattern should return 0."""
+        self.assertEqual(parse_duration_to_seconds("invalid"), 0)
 
 
 if __name__ == '__main__':
