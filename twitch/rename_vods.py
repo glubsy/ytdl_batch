@@ -311,7 +311,8 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
     """
     Find the best matching video from API data.
     First attempts to match by stream_id extracted from filename.
-    Falls back to date-based matching if stream_id match fails.
+    If file already has a video ID but no match is found, returns None to avoid false matches.
+    Only falls back to date-based matching for files without video IDs.
     Filters out videos shorter than 10 seconds to avoid stub VODs.
     Returns the video dict if found, None otherwise.
     """
@@ -327,9 +328,17 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                     file_path.name, video['id'], video['title'], stream_id
                 )
                 return video
+        
+        # If file has a video ID but we couldn't match it, skip date-based matching
+        # This prevents false matches when the original VOD has been deleted
+        log.info(
+            "File has video ID [%s] but no matching VOD found in API - skipping to avoid false match: %s",
+            file_video_id, file_path.name
+        )
+        return None
 
-    # Fall back to date-based matching
-    log.debug("No stream_id match found, falling back to date-based matching for: %s", file_path.name)
+    # Only fall back to date-based matching if file doesn't have a video ID
+    log.debug("No video ID in filename, using date-based matching for: %s", file_path.name)
 
     file_date = extract_date_from_filename(file_path.name)
     if not file_date:
