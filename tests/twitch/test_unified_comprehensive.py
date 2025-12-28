@@ -158,23 +158,26 @@ streamer_name:
     
     def test_video_matching_closest_date(self):
         """Test that closest video by date is matched."""
-        file_path = Path('20241024 14-29-04 [Author] title [best][123].mp4')
+        file_path = Path('20241024 14-29-04 [Author] title [best][].mp4')
         
         videos = [
             {
                 'id': '111',
                 'title': 'Far Stream',
-                'created_at': '2024-10-20T10:00:00Z'
+                'created_at': '2024-10-20T10:00:00Z',
+                'duration': '2h00m00s'
             },
             {
                 'id': '222',
                 'title': 'Close Stream',
-                'created_at': '2024-10-24T15:00:00Z'
+                'created_at': '2024-10-24T15:00:00Z',
+                'duration': '2h00m00s'
             },
             {
                 'id': '333',
                 'title': 'Very Far Stream',
-                'created_at': '2024-10-30T10:00:00Z'
+                'created_at': '2024-10-30T10:00:00Z',
+                'duration': '2h00m00s'
             }
         ]
         
@@ -186,16 +189,19 @@ streamer_name:
             self.assertEqual(result['id'], '222')
     
     def test_video_matching_no_match_too_far(self):
-        """Test that no match is returned when videos are too far."""
+        """Test that files with video IDs not in API return None."""
         file_path = Path('20241024 14-29-04 [Author] title [best][123].mp4')
         
         videos = [{
             'id': '456',
             'title': 'Very Far Stream',
-            'created_at': '2024-10-20T14:29:04Z'  # 4 days away
+            'created_at': '2024-10-20T14:29:04Z',  # 4 days away
+            'duration': '2h00m00s'
         }]
         
         result = self.find_matching_video(file_path, videos)
+        
+        # Should return None because file has video ID 123 not found in API
         self.assertIsNone(result)
 
 
@@ -327,34 +333,43 @@ streamer_name:
                     'title': 'New Stream Title from API',
                     'created_at': '2024-10-24T14:30:00Z',
                     'url': 'https://twitch.tv/videos/2600103474',
-                    'duration': '2h30m'
+                    'duration': '2h30m00s'
                 }]
                 
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    temp_path = Path(temp_dir)
-                    
-                    # Create test file
-                    original_filename = '20241024 14-29-04 [Streamer Name] old title [best][123].mp4'
-                    test_file = temp_path / original_filename
-                    test_file.touch()
-                    
-                    # Create videos_by_channel dict format
-                    videos_by_channel = {'streamer_name_channel': mock_videos}
-                    
-                    # Test apply mode
-                    with patch('builtins.print'):  # Suppress output
-                        self.update_filenames([test_file], videos_by_channel, dry_run=False)
-                    
-                    # Original file should no longer exist
-                    self.assertFalse(test_file.exists())
-                    
-                    # New file should exist
-                    files_after = list(temp_path.iterdir())
-                    self.assertEqual(len(files_after), 1)
-                    
-                    new_file = files_after[0]
-                    self.assertIn('New Stream Title from API', new_file.name)
-                    self.assertIn('2600103474', new_file.name)
+                # Mock CONFIG to map author to channel
+                mock_config = {
+                    'streamer_config': {
+                        'channel_id': 'streamer_name_channel',
+                        'author_name': ['Streamer Name']
+                    }
+                }
+                
+                with patch('twitch.rename_vods.CONFIG', mock_config):
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        temp_path = Path(temp_dir)
+                        
+                        # Create test file with empty video ID so it can match
+                        original_filename = '20241024 14-29-04 [Streamer Name] old title [best][].mp4'
+                        test_file = temp_path / original_filename
+                        test_file.touch()
+                        
+                        # Create videos_by_channel dict format
+                        videos_by_channel = {'streamer_name_channel': mock_videos}
+                        
+                        # Test apply mode
+                        with patch('builtins.print'):  # Suppress output
+                            self.update_filenames([test_file], videos_by_channel, dry_run=False)
+                        
+                        # Original file should no longer exist
+                        self.assertFalse(test_file.exists())
+                        
+                        # New file should exist
+                        files_after = list(temp_path.iterdir())
+                        self.assertEqual(len(files_after), 1)
+                        
+                        new_file = files_after[0]
+                        self.assertIn('New Stream Title from API', new_file.name)
+                        self.assertIn('2600103474', new_file.name)
 
 
 class TestVPrefixSkipping(unittest.TestCase):
