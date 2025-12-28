@@ -13,7 +13,11 @@ from datetime import datetime
 import os
 
 # Add the project root to the path to import modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+# Set up environment for testing
+os.environ['TWITCH_CLIENT_ID'] = 'test_id'
+os.environ['TWITCH_CLIENT_SECRET'] = 'test_secret'
 
 # Mock the config file loading before importing the module
 mock_config_data = """
