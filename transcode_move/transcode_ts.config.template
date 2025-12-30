@@ -2,10 +2,10 @@
 
 declare -A destinations
 
-default_destination="/storage/vtubers_raw_04/vtubers_dump"
+default_destination="/storage/vtubers_raw_05/vtubers_dump"
 
 base_origin="/remote/twitch_monitor"
-base_dest="/storage/vtubers_raw_04/vtubers_dump"
+base_dest="/storage/vtubers_raw_05/vtubers_dump"
 
 destinations=(
 "${base_origin}/chibidoki" "${base_dest}/chibidoki"
@@ -41,4 +41,6 @@ destinations=(
 "${base_origin}/pokkavt" "${base_dest}/pokkavt"
 "${base_origin}/nokko" "${base_dest}/nokko"
 "${base_origin}/sobuuo" "${base_dest}/sobuuo"
+"${base_origin}/fawoot" "${base_dest}/fawoot"
+"${base_origin}/meltymim" "${base_dest}/meltymim"
 )
