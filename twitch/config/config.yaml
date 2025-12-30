@@ -55,12 +55,19 @@ Shadowchama:
   author_name: ["shadowchama"]
   channel_id: "shadowchama"
 
+fawoot:
+  directory_name: "fawoot"
+  author_name: ["fawoot"]
+  channel_id: "fawoot"
+  title_overrides:
+    - "!discord !comm"
+
 FRAIKI:
   directory_name: "fraiki"
   author_name: ["FRAIKI", "fraiki"]
   channel_id: "fraiki"
   title_overrides:
-    - "🔴!discord"
+    - "🔴!discord !plush"
 
 Irina Kumai:
   directory_name: "irinakumai"
@@ -123,6 +130,11 @@ Marimari_en:
   title_overrides:
     - "(!merch)"
 
+meltymim:
+  directory_name: "meltymim"
+  author_name: ["meltymim"]
+  channel_id: "meltymim"
+
 Mikanthemink:
   directory_name: "mikanthemink"
   author_name: ["Mikanthemink", "mikanthemink"]
@@ -165,7 +177,7 @@ Ruri Nemuri:
   author_name: ["Ruri Nemui", "rurinemui"]
   channel_id: "rurinemui"
   title_overrides:
-    - "⋮ !vgen !discord !throne"
+    - "⋮!vgen !discord !throne"
 
 Ruruka Runa:
   directory_name: "rurukaruna"
