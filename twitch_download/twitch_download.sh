@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Base storage path for all channels
-BASE_STORAGE="/storage/vtubers_raw_04/vtubers_dump"
+BASE_STORAGE="/storage/vtubers_raw_05/vtubers_dump"
 COOKIES_FILE="${HOME}/Cookies/firefox_cookies.txt"
 
 # Define channels as associative arrays. The author_name is used for the output filename.
@@ -16,6 +16,7 @@ declare -a CHANNELS=(
     "kana|${BASE_STORAGE}/kamiko_kana|Kamiko Kana"
     "nokko|${BASE_STORAGE}/nokko|Nokko"
     "sobuuo|${BASE_STORAGE}/sobuuo|sobuuo"
+    "fraiki|${BASE_STORAGE}/fraiki|fraiki"
     # Add more channels here in the same format:
     # "twitch_username|${BASE_STORAGE}/subfolder|Display Name"
 )
