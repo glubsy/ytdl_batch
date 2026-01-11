@@ -43,4 +43,5 @@ destinations=(
 "${base_origin}/sobuuo" "${base_dest}/sobuuo"
 "${base_origin}/fawoot" "${base_dest}/fawoot"
 "${base_origin}/meltymim" "${base_dest}/meltymim"
+"${base_origin}/gumibun" "${base_dest}/gumibun"
 )
