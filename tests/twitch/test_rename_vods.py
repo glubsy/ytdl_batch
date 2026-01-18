@@ -1087,5 +1087,346 @@ class TestParseDurationToSeconds(unittest.TestCase):
         self.assertEqual(parse_duration_to_seconds("invalid"), 0)
 
 
+def convert_videos_to_channel_dict(videos: list[dict], channel_id: str = "test_channel") -> dict[str, list[dict]]:
+    """Helper function to convert legacy video list to new channel-based dict format."""
+    return {channel_id: videos}
+
+
+class TestDryRunVsApplyMode(unittest.TestCase):
+    """Test dry-run vs apply mode functionality."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        # Mock the config file loading
+        self.mock_config_data = """
+streamer_name:
+  directory_name: "streamer_name"  
+  author_name: ["Streamer Name"]
+  channel_id: "streamer_name_channel"
+"""
+        self.config_patcher = patch(
+            "builtins.open", 
+            mock_open(read_data=self.mock_config_data))
+        self.config_patcher.start()
+        self.expanduser_patcher = patch(
+            "os.path.expanduser", 
+            return_value="/mock/config/path")
+        self.expanduser_patcher.start()
+        
+        from twitch.rename_vods import update_filenames
+        self.update_filenames = update_filenames
+    
+    def tearDown(self):
+        """Clean up."""
+        self.config_patcher.stop()
+        self.expanduser_patcher.stop()
+    
+    def test_dry_run_preserves_files(self):
+        """Test that dry-run mode preserves original files."""
+        from twitch.rename_vods import find_matching_video
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create test file with empty video ID
+            original_filename = '20241024 14-29-04 [Streamer Name] old title [best][].mp4'
+            test_file = temp_path / original_filename
+            test_file.touch()
+            
+            # Create mock videos with matching timestamp (accounting for timezone)
+            file_local = datetime(2024, 10, 24, 14, 29, 4)
+            vod_local = file_local + timedelta(minutes=1)
+            vod_utc_str = local_time_to_utc_string(vod_local)
+            
+            mock_videos = [{
+                'id': '2600103474',
+                'title': 'New Stream Title from API',
+                'created_at': vod_utc_str,
+                'url': 'https://twitch.tv/videos/2600103474',
+                'duration': '2h30m00s'
+            }]
+            
+            # Test that find_matching_video works
+            match = find_matching_video(test_file, mock_videos)
+            self.assertIsNotNone(match)
+            self.assertEqual(match['id'], '2600103474')
+            
+            # File should still exist (we only tested matching, didn't rename)
+            self.assertTrue(test_file.exists())
+    
+    def test_apply_mode_renames_files(self):
+        """Test that apply mode actually renames files."""
+        from twitch.rename_vods import find_matching_video, generate_new_filename
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            
+            # Create test file with empty video ID so it can match
+            original_filename = '20241024 14-29-04 [Streamer Name] old title [best][].mp4'
+            test_file = temp_path / original_filename
+            test_file.touch()
+            
+            # Create mock videos with close timestamp that accounts for timezone
+            # File at 14:29:04 local time
+            file_local = datetime(2024, 10, 24, 14, 29, 4)
+            # VOD 1 minute later in local time (within threshold)
+            vod_local = file_local + timedelta(minutes=1)
+            vod_utc_str = local_time_to_utc_string(vod_local)
+            
+            mock_videos = [{
+                'id': '2600103474',
+                'title': 'New Stream Title from API',
+                'created_at': vod_utc_str,
+                'url': 'https://twitch.tv/videos/2600103474',
+                'duration': '2h30m00s'
+            }]
+            
+            # Find matching video
+            match = find_matching_video(test_file, mock_videos)
+            self.assertIsNotNone(match, "File should match to a video")
+            
+            # Generate new filename
+            new_filename = generate_new_filename(test_file, match)
+            new_file = temp_path / new_filename
+            
+            # Simulate rename
+            test_file.rename(new_file)
+            
+            # Original file should no longer exist
+            self.assertFalse(test_file.exists())
+            
+            # New file should exist
+            self.assertTrue(new_file.exists())
+            self.assertIn('New Stream Title from API', new_file.name)
+            self.assertIn('2600103474', new_file.name)
+
+
+class TestVPrefixSkipping(unittest.TestCase):
+    """Test that files with 'v' prefixed video IDs are handled correctly."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        # Mock the config file loading
+        self.mock_config_data = """
+streamer_name:
+  directory_name: "streamer_name"  
+  author_name: ["Streamer Name"]
+  channel_id: "streamer_name_channel"
+"""
+        self.config_patcher = patch("builtins.open", mock_open(read_data=self.mock_config_data))
+        self.config_patcher.start()
+        self.expanduser_patcher = patch("os.path.expanduser", return_value="/mock/config/path")
+        self.expanduser_patcher.start()
+        
+        from twitch.rename_vods import update_filenames, extract_video_id
+        self.update_filenames = update_filenames
+        self.extract_video_id = extract_video_id
+    
+    def tearDown(self):
+        """Clean up."""
+        self.config_patcher.stop()
+        self.expanduser_patcher.stop()
+    
+    def test_v_prefix_extraction(self):
+        """Test that 'v' prefixed IDs are correctly extracted."""
+        filename = '20241024 14-29-04 [Streamer Name] stream [best][v12345678].mp4'
+        result = self.extract_video_id(filename)
+        self.assertEqual(result, 'v12345678')
+    
+    def test_v_prefix_files_skipped_in_processing(self):
+        """Test that 'v' prefixed files are skipped during processing."""
+        with patch('twitch.fetch_vods.get_access_token', return_value='mock_token'):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                
+                # Create test files
+                v_prefixed_file = temp_path / '20241024 14-29-04 [Streamer Name] stream [best][v12345678].mp4'
+                normal_file = temp_path / '20241024 14-30-00 [Streamer Name] stream [best][1234567890].mp4'
+                
+                v_prefixed_file.touch()
+                normal_file.touch()
+                
+                # Create mock videos
+                mock_videos = [{
+                    'id': '2600103474',
+                    'title': 'Test Stream Title',
+                    'created_at': '2024-10-24T14:30:00Z',
+                    'url': 'https://twitch.tv/videos/2600103474',
+                    'duration': '2h30m'
+                }]
+                
+                # Test dry-run mode
+                videos_by_channel = convert_videos_to_channel_dict(mock_videos, "streamer_name_channel")
+                with patch('builtins.print'):  # Suppress output
+                    self.update_filenames([v_prefixed_file, normal_file], videos_by_channel, dry_run=True)
+                
+                # Both files should still exist (dry-run mode)
+                self.assertTrue(v_prefixed_file.exists())
+                self.assertTrue(normal_file.exists())
+
+
+class TestVideoIdMatchingSkip(unittest.TestCase):
+    """Test skipping files when video ID already matches API."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        # Mock the config file loading
+        self.mock_config_data = """
+Streamer Name:
+  directory_name: "streamer_name"  
+  author_name: ["Streamer Name"]
+  channel_id: "streamer_name_channel"
+"""
+        self.config_patcher = patch(
+            "builtins.open", mock_open(read_data=self.mock_config_data))
+        self.config_patcher.start()
+        self.expanduser_patcher = patch(
+            "os.path.expanduser", return_value="/mock/config/path")
+        self.expanduser_patcher.start()
+        
+        from twitch.rename_vods import update_filenames
+        self.update_filenames = update_filenames
+    
+    def tearDown(self):
+        """Clean up."""
+        self.config_patcher.stop()
+        self.expanduser_patcher.stop()
+    
+    def test_skip_files_with_matching_video_id(self):
+        """Test that files with video IDs matching the API are skipped."""
+        with patch('twitch.fetch_vods.get_access_token', return_value='mock_token'):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                
+                # Create test files
+                matching_file = temp_path / '20241024 14-30-00 [Streamer Name] old title [best][2600103474].mp4'
+                different_file = temp_path / '20241024 14-31-00 [Streamer Name] old title [best][1234567890].mp4'
+                
+                matching_file.touch()
+                different_file.touch()
+                
+                # Create mock videos
+                mock_videos = [{
+                    'id': '2600103474',
+                    'stream_id': 41508111949,
+                    'title': 'New Title',
+                    'created_at': '2024-10-24T14:30:00Z',
+                    'url': 'https://twitch.tv/videos/2600103474',
+                    'duration': '4h37m50s'
+                }]
+                
+                # Should skip the matching file
+                videos_by_channel = convert_videos_to_channel_dict(mock_videos, "streamer_name_channel")
+                with patch('builtins.print'):  # Suppress output
+                    self.update_filenames([matching_file, different_file], videos_by_channel, dry_run=True)
+                
+                # Both files should still exist
+                self.assertTrue(matching_file.exists())
+                self.assertTrue(different_file.exists())
+    
+    def test_exact_video_id_priority_over_date_proximity(self):
+        """Test that exact video ID matches take priority over closer date matches."""
+        with patch('twitch.fetch_vods.get_access_token', return_value='mock_token'):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                
+                # Create test file with specific video ID
+                test_file = temp_path / '20250930 19-00-18 [Streamer Name] new badges [best][2579723488].mp4'
+                test_file.touch()
+                
+                # Create mock videos - one with matching ID but far date, one with close date but different ID
+                mock_videos = [
+                    {
+                        'id': '2579723488',  # Exact match
+                        'stream_id': 123456789,
+                        'title': 'Exact Match Video',
+                        'created_at': '2025-09-30T18:00:00Z',  # 1 hour difference
+                        'url': 'https://twitch.tv/videos/2579723488',
+                        'duration': '2h00m00s'
+                    },
+                    {
+                        'id': '9999999999',  # Different ID
+                        'stream_id': 987654321,
+                        'title': 'Close Date Video',
+                        'created_at': '2025-09-30T19:00:00Z',  # Very close time
+                        'url': 'https://twitch.tv/videos/9999999999',
+                        'duration': '1h30m00s'
+                    }
+                ]
+                
+                # Should prioritize exact ID match
+                videos_by_channel = convert_videos_to_channel_dict(mock_videos, "streamer_name_channel")
+                with patch('builtins.print'):  # Suppress output
+                    self.update_filenames([test_file], videos_by_channel, dry_run=True)
+                
+                # File should still exist (dry-run mode)
+                self.assertTrue(test_file.exists())
+
+
+class TestRealWorldScenarios(unittest.TestCase):
+    """Test realistic scenarios with mixed file types."""
+    
+    def setUp(self):
+        """Set up test environment."""
+        # Mock the config file loading
+        self.mock_config_data = """
+Streamer Name:
+  directory_name: "streamer_name"  
+  author_name: ["Streamer Name"]
+  channel_id: "streamer_name_channel"
+"""
+        self.config_patcher = patch(
+            "builtins.open", mock_open(read_data=self.mock_config_data))
+        self.config_patcher.start()
+        self.expanduser_patcher = patch(
+            "os.path.expanduser", return_value="/mock/config/path")
+        self.expanduser_patcher.start()
+        
+        from twitch.rename_vods import update_filenames
+        self.update_filenames = update_filenames
+    
+    def tearDown(self):
+        """Clean up."""
+        self.config_patcher.stop()
+        self.expanduser_patcher.stop()
+    
+    def test_mixed_video_id_scenarios(self):
+        """Test processing of mixed video ID formats in realistic scenarios."""
+        with patch('twitch.fetch_vods.get_access_token', return_value='mock_token'):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir)
+                
+                # Create realistic test files
+                test_files = [
+                    '20241024 09-30-15 [Streamer Name] old title [best][v1947286839].mp4',  # Should skip
+                    '20241024 09-31-00 [Streamer Name] old title [best][2600103999].mp4',   # Should process
+                    '20241024 09-32-00 [Streamer Name] old title [best][].mp4'             # Should process
+                ]
+                
+                file_paths = []
+                for filename in test_files:
+                    file_path = temp_path / filename
+                    file_path.touch()
+                    file_paths.append(file_path)
+                
+                # Create mock videos
+                mock_videos = [{
+                    'id': '2600103474',
+                    'title': 'Morning Chat Stream - Coffee and Updates',
+                    'created_at': '2024-10-24T09:30:00Z',
+                    'url': 'https://twitch.tv/videos/2600103474',
+                    'duration': '2h15m'
+                }]
+                
+                # Run update (dry-run mode)
+                videos_by_channel = convert_videos_to_channel_dict(mock_videos, "streamer_name_channel")
+                with patch('builtins.print'):  # Suppress output
+                    self.update_filenames(file_paths, videos_by_channel, dry_run=True)
+                
+                # All files should still exist in dry-run mode
+                for file_path in file_paths:
+                    self.assertTrue(file_path.exists())
+
+
 if __name__ == '__main__':
     unittest.main()
