@@ -788,9 +788,6 @@ def main():
     # Update filenames based on API data, matching files to videos from correct channels
     update_filenames(video_files, videos_by_channel, dry_run=not args.apply)
 
-    if not args.apply:
-        color_print("\n💡 To apply these changes, run the script again with --apply flag", "CYAN")
-
 
 if __name__ == "__main__":
     main()
