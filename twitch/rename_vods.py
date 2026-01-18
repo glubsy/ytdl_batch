@@ -725,9 +725,7 @@ def main():
         log.setLevel(logging.DEBUG)
         # Don't modify root logger to avoid interference with our colored logging
 
-    if args.apply:
-        color_print("🔥 LIVE MODE: Files will be actually renamed!", "RED")
-    else:
+    if not args.apply:
         color_print("🚫 DRY RUN MODE: No files will be renamed. Use --apply to apply changes.", "YELLOW")
 
     try:
