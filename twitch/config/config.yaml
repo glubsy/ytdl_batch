@@ -68,11 +68,23 @@ FRAIKI:
   channel_id: "fraiki"
   title_overrides:
     - "🔴!discord !plush"
+    - "🔴 !discord !video"
+    - "🔴!discord !moxi !model"
+
+gumibun:
+  directory_name: "gumibun"
+  author_name: ["gumibun"]
+  channel_id: "gumibun"
+  title_overrides:
+    - "🥜 !discord"
+    - "🥜"
 
 Irina Kumai:
   directory_name: "irinakumai"
   author_name: ["Irina Kumai", "irina_kumai"]
   channel_id: "irinakumai"
+  title_overrides:
+  - "| !info"
 
 Kam0tan:
   directory_name: "kam0tan"
@@ -100,6 +112,7 @@ Kloe Kroc:
   channel_id: "kloekroc"
   title_overrides:
     - "🐊💢 !discord !gg"
+    - "🐊 !discord !gg"
 
 Krumroll:
   directory_name: "krumroll"
@@ -172,12 +185,18 @@ Pokka:
   title_overrides:
     - "!discord !lurk"
 
+Patchumi:
+  directory_name: "patchumi"
+  author_name: ["patchumi", "patchumivtt"]
+  channel_id: "patchumivtt"
+
 Ruri Nemuri:
   directory_name: "rurinemui"
   author_name: ["Ruri Nemui", "rurinemui"]
   channel_id: "rurinemui"
   title_overrides:
     - "⋮!vgen !discord !throne"
+    - "⋮ !discord !throne "
 
 Ruruka Runa:
   directory_name: "rurukaruna"
@@ -195,6 +214,7 @@ Sobuuo:
   channel_id: "sobuuo"
   title_overrides:
     - "!discord !fone"
+    - "!charmander !pee !fone "
 
 Tatsukkowai:
   directory_name: "tatsukkowai"
@@ -214,3 +234,4 @@ Yoob:
   channel_id: "yoob_ch"
   title_overrides:
     - "★ !discord"
+    - "!youtube !twitter"
