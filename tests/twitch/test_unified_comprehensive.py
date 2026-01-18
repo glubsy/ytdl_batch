@@ -7,9 +7,10 @@ import unittest
 import tempfile
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch, Mock, mock_open
 import os
+import time
 
 # Add the project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -17,6 +18,28 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 # Set up environment for testing
 os.environ['TWITCH_CLIENT_ID'] = 'test_id'
 os.environ['TWITCH_CLIENT_SECRET'] = 'test_secret'
+
+
+def local_time_to_utc_string(local_dt):
+    """
+    Convert a local datetime to UTC ISO string for testing.
+    Accounts for the system's timezone offset.
+    
+    Args:
+        local_dt: datetime object representing local time
+    
+    Returns:
+        str: ISO format UTC timestamp like '2025-12-22T05:55:00Z'
+    """
+    # Get local timezone offset
+    if time.daylight and time.localtime().tm_isdst:
+        utc_offset_seconds = -time.altzone
+    else:
+        utc_offset_seconds = -time.timezone
+    
+    # Convert local to UTC
+    utc_dt = local_dt - timedelta(seconds=utc_offset_seconds)
+    return utc_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def convert_videos_to_channel_dict(videos: list[dict], channel_id: str = "test_channel") -> dict[str, list[dict]]:
@@ -160,6 +183,14 @@ streamer_name:
         """Test that closest video by date is matched."""
         file_path = Path('20241024 14-29-04 [Author] title [best][].mp4')
         
+        # File at 14:29:04 local time
+        # Create VOD timestamps that will be within threshold after timezone conversion
+        file_local = datetime(2024, 10, 24, 14, 29, 4)
+        
+        # Close VOD: 30 minutes after file (in local time)
+        close_vod_local = file_local + timedelta(minutes=30)
+        close_vod_utc = local_time_to_utc_string(close_vod_local)
+        
         videos = [
             {
                 'id': '111',
@@ -170,7 +201,7 @@ streamer_name:
             {
                 'id': '222',
                 'title': 'Close Stream',
-                'created_at': '2024-10-24T15:00:00Z',
+                'created_at': close_vod_utc,  # ~30 minutes away (accounting for timezone)
                 'duration': '2h00m00s'
             },
             {

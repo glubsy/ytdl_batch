@@ -24,7 +24,8 @@ from pathlib import Path
 import yaml
 import logging
 import re
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 import os
 import argparse
 
@@ -370,16 +371,31 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
 
     for video in filtered_videos:
         try:
-            # Parse Twitch API date format (ISO 8601)
-            video_date = datetime.fromisoformat(video['created_at'].replace('Z', '+00:00'))
-            # Convert to naive datetime for comparison (assuming local timezone)
-            video_date = video_date.replace(tzinfo=None)
+            # Parse Twitch API date format (ISO 8601) - this is in UTC
+            video_date_utc = datetime.fromisoformat(video['created_at'].replace('Z', '+00:00'))
+            
+            # Convert file date from local time to UTC for proper comparison
+            # file_date is in local time, so we need to get the local timezone offset
 
-            time_diff = abs((file_date - video_date).total_seconds())
+            # Get local timezone offset in seconds
+            # time.timezone is seconds west of UTC (negative for east)
+            # When DST is active, use time.altzone instead
+            if time.daylight and time.localtime().tm_isdst:
+                utc_offset_seconds = -time.altzone
+            else:
+                utc_offset_seconds = -time.timezone
+            
+            # Convert file_date to UTC by subtracting the offset
+
+            file_date_utc = file_date - timedelta(seconds=utc_offset_seconds)
+            
+            # Now both datetimes are in UTC, compare them
+            video_date = video_date_utc.replace(tzinfo=None)
+            time_diff = abs((file_date_utc - video_date).total_seconds())
 
             # Check if video started before or after the file timestamp
             # Negative means video started before file (which is expected)
-            time_offset = (video_date - file_date).total_seconds()
+            time_offset = (video_date - file_date_utc).total_seconds()
 
             log.debug(
                 "  Checking VOD [%s] %s (created: %s, time_diff: %.1f seconds, offset: %+.1fs)",
@@ -408,7 +424,7 @@ def find_matching_video(file_path: Path, videos: list[dict]) -> dict | None:
                         # Get offset of current best match
                         best_offset = (datetime.fromisoformat(
                             best_match['created_at'].replace('Z', '+00:00')
-                        ).replace(tzinfo=None) - file_date).total_seconds()
+                        ).replace(tzinfo=None) - file_date_utc).total_seconds()
 
                         # When close, prefer VOD that started before file (negative offset)
                         if time_offset < best_offset:

@@ -9,8 +9,9 @@ from unittest.mock import Mock, patch, MagicMock, mock_open
 from pathlib import Path
 import tempfile
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import time
 
 # Add the project root to the path to import modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -41,6 +42,28 @@ with patch("builtins.open", mock_open(read_data=mock_config_data)):
             apply_title_overrides,
             parse_duration_to_seconds
         )
+
+
+def local_time_to_utc_string(local_dt):
+    """
+    Convert a local datetime to UTC ISO string for testing.
+    Accounts for the system's timezone offset.
+    
+    Args:
+        local_dt: datetime object representing local time
+    
+    Returns:
+        str: ISO format UTC timestamp like '2025-12-22T05:55:00Z'
+    """
+    # Get local timezone offset
+    if time.daylight and time.localtime().tm_isdst:
+        utc_offset_seconds = -time.altzone
+    else:
+        utc_offset_seconds = -time.timezone
+    
+    # Convert local to UTC
+    utc_dt = local_dt - timedelta(seconds=utc_offset_seconds)
+    return utc_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 class TestExtractVideoId(unittest.TestCase):
@@ -534,6 +557,15 @@ class TestVideoMatching(unittest.TestCase):
     def test_find_closest_match(self):
         """Test finding closest date match."""
         file_path = Path("20241024 14-29-04 [Author] title [best][].mp4")
+        
+        # File at 14:29:04 local time
+        # Create VOD timestamps that will be within threshold after timezone conversion
+        file_local = datetime(2024, 10, 24, 14, 29, 4)
+        
+        # Close VOD: 30 minutes after file (in local time)
+        close_vod_local = file_local + timedelta(minutes=30)
+        close_vod_utc = local_time_to_utc_string(close_vod_local)
+        
         videos = [
             {
                 'id': '111',
@@ -544,7 +576,7 @@ class TestVideoMatching(unittest.TestCase):
             {
                 'id': '222',
                 'title': 'Close Stream',
-                'created_at': '2024-10-24T15:00:00Z',  # ~30 minutes away
+                'created_at': close_vod_utc,  # ~30 minutes away (accounting for timezone)
                 'duration': '2h00m00s'
             },
             {
@@ -813,14 +845,20 @@ class TestFindMatchingVideoRegression(unittest.TestCase):
         Test boundary condition: exactly at 1 hour 5 minutes (3900 seconds).
         """
         file_path = Path("20251222 07-00-00 [test]  [best][].mp4")
+        
+        # File time in local timezone: 07:00:00
+        # We want VOD to be exactly 65 minutes (3900 seconds) before in UTC
+        file_local = datetime(2025, 12, 22, 7, 0, 0)
+        vod_local = file_local - timedelta(minutes=65)
+        vod_utc_str = local_time_to_utc_string(vod_local)
 
-        # VOD exactly 3900 seconds (65 minutes) before file
+        # VOD exactly 65 minutes before file (accounting for timezone)
         videos = [
             {
                 'id': '2650000001',
                 'stream_id': 2650000001,
                 'title': 'Boundary test',
-                'created_at': '2025-12-22T05:55:00Z',  # 65 minutes before file
+                'created_at': vod_utc_str,
                 'duration': '2h00m00s'
             }
         ]
@@ -835,14 +873,20 @@ class TestFindMatchingVideoRegression(unittest.TestCase):
         Test boundary condition: just over 1 hour 5 minutes should not match.
         """
         file_path = Path("20251222 07-00-00 [test]  [best][].mp4")
+        
+        # File time in local timezone: 07:00:00
+        # We want VOD to be 65 minutes 1 second (3901 seconds) before in UTC
+        file_local = datetime(2025, 12, 22, 7, 0, 0)
+        vod_local = file_local - timedelta(minutes=65, seconds=1)
+        vod_utc_str = local_time_to_utc_string(vod_local)
 
-        # VOD 3901 seconds (just over threshold) before file
+        # VOD 3901 seconds (just over threshold) before file (accounting for timezone)
         videos = [
             {
                 'id': '2650000002',
                 'stream_id': 2650000002,
                 'title': 'Over threshold',
-                'created_at': '2025-12-22T05:54:59Z',  # 65min 1sec before
+                'created_at': vod_utc_str,
                 'duration': '2h00m00s'
             }
         ]
