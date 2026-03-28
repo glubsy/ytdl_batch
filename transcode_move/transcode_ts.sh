@@ -38,14 +38,77 @@ YELLOW="\u001b[33;1m"
 MAGENTA="\u001b[35;1m"
 RESET="\u001b[0m"
 
-# Wait for ytdlp processes to finish before starting transcoding
-wait_for_ytdlp_to_finish() {
-    echo "Checking for running ytdlp processes..."
-    while pgrep -x ytdlp > /dev/null || pgrep -x yt-dlp > /dev/null; do
-        echo "ytdlp is running, waiting 5 minutes before checking again..."
-        sleep 300  # Wait 5 minutes
-    done
-    echo "No ytdlp processes detected, proceeding with transcoding"
+# Return the block-device id (st_dev) for a path, walking up to an existing
+# parent if the path does not exist yet.
+get_block_device_id_for_path() {
+	local p="$1"
+	while [[ ! -e "$p" ]]; do
+		# Reached root and still not found
+		if [[ "$p" == "/" ]]; then
+			break
+		fi
+		p="${p:h}"
+		[[ -z "$p" ]] && p="/"
+	done
+	stat --print '%d' "$p" 2>/dev/null
+}
+
+# Returns 0 if a running ffmpeg process is writing to one of the destination
+# block devices, 1 otherwise.
+is_ffmpeg_writing_to_destination_device() {
+	local -A dest_devices=()
+	local device_id=""
+	local pid=""
+	local fd_path=""
+	local fd_num=""
+	local fd_flags=""
+	local fd_target=""
+	local fd_device=""
+	local write_mode=0
+
+	for _orig dest in "${(@kv)destinations}"; do
+		device_id="$(get_block_device_id_for_path "$dest")"
+		if [[ -n "$device_id" ]]; then
+			dest_devices["$device_id"]=1
+		fi
+	done
+
+	# No destination devices resolved means no possible conflict to gate on.
+	[[ ${#dest_devices[@]} -eq 0 ]] && return 1
+
+	for pid in ${(f)"$(pgrep -x ffmpeg 2>/dev/null)"}; do
+		[[ -z "$pid" ]] && continue
+		for fd_path in /proc/${pid}/fd/*(N); do
+			fd_num="${fd_path:t}"
+			fd_flags="$(awk '/^flags:/ {print $2}' /proc/${pid}/fdinfo/${fd_num} 2>/dev/null)"
+			[[ -z "$fd_flags" ]] && continue
+
+			# Linux fd flags are octal; low two bits indicate access mode:
+			# 0=read-only, 1=write-only, 2=read-write.
+			write_mode=$((8#${fd_flags} & 3))
+			(( write_mode == 0 )) && continue
+
+			fd_target="$(readlink -f "$fd_path" 2>/dev/null)"
+			[[ -z "$fd_target" || ! -e "$fd_target" ]] && continue
+
+			fd_device="$(stat --print '%d' "$fd_target" 2>/dev/null)"
+			if [[ -n "$fd_device" && -n "${dest_devices[$fd_device]}" ]]; then
+				return 0
+			fi
+		done
+	done
+
+	return 1
+}
+
+# Wait only if ffmpeg is writing to the same destination block device.
+wait_for_ffmpeg_device_conflicts() {
+	echo "Checking for ffmpeg writes on destination block device(s)..."
+	while is_ffmpeg_writing_to_destination_device; do
+		echo "Conflicting ffmpeg write detected, waiting 5 minutes..."
+		sleep 300  # Wait 5 minutes
+	done
+	echo "No conflicting ffmpeg writes detected, proceeding with transcoding"
 }
 
 # Get file stats and check if ready to be processed
@@ -106,9 +169,9 @@ for orig dest in "${(@kv)destinations}"; do
 	done
 done
 
-# Only wait for ytdlp if we actually have files to process
+# Only wait for conflicting ffmpeg writes if we actually have files to process
 if [[ "$has_files_to_process" == "true" ]]; then
-	wait_for_ytdlp_to_finish
+	wait_for_ffmpeg_device_conflicts
 else
 	echo "No files ready to process. Exiting."
 	exit 0
