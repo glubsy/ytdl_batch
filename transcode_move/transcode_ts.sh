@@ -50,9 +50,10 @@ get_block_device_id_for_path() {
 	stat --print '%d' "$p" 2>/dev/null
 }
 
-# Returns 0 if a running ffmpeg process is writing to one of the destination
-# block devices, 1 otherwise.
-is_ffmpeg_writing_to_destination_device() {
+# Returns 0 if a running process with the given name is writing to one of the
+# destination block devices, 1 otherwise.
+is_process_writing_to_destination_device() {
+	local process_name="$1"
 	local -A dest_devices=()
 	local device_id=""
 	local pid=""
@@ -73,7 +74,7 @@ is_ffmpeg_writing_to_destination_device() {
 	# No destination devices resolved means no possible conflict to gate on.
 	[[ ${#dest_devices[@]} -eq 0 ]] && return 1
 
-	for pid in ${(f)"$(pgrep -x ffmpeg 2>/dev/null)"}; do
+	for pid in ${(f)"$(pgrep -x "$process_name" 2>/dev/null)"}; do
 		[[ -z "$pid" ]] && continue
 		for fd_path in /proc/${pid}/fd/*(N); do
 			fd_num="${fd_path:t}"
@@ -98,14 +99,18 @@ is_ffmpeg_writing_to_destination_device() {
 	return 1
 }
 
-# Wait only if ffmpeg is writing to the same destination block device.
-wait_for_ffmpeg_device_conflicts() {
-	echo "Checking for ffmpeg writes on destination block device(s)..."
-	while is_ffmpeg_writing_to_destination_device; do
-		echo "Conflicting ffmpeg write detected, waiting 5 minutes..."
+# Wait only if ffmpeg, ytdlp, or yt-dlp is writing to the same destination
+# block device. This is to reduce concurent writes to the same device.
+wait_for_destination_device_conflicts() {
+	echo "Checking for active writes on destination block device(s)..."
+	while \
+		is_process_writing_to_destination_device "ffmpeg" || \
+		is_process_writing_to_destination_device "ytdlp" || \
+		is_process_writing_to_destination_device "yt-dlp"; do
+		echo "Conflicting ffmpeg/yt-dlp write detected, waiting 5 minutes..."
 		sleep 300  # Wait 5 minutes
 	done
-	echo "No conflicting ffmpeg writes detected, proceeding with transcoding"
+	echo "No conflicting destination-device writes detected, proceeding with transcoding"
 }
 
 # Get file stats and check if ready to be processed
@@ -166,9 +171,10 @@ for orig dest in "${(@kv)destinations}"; do
 	done
 done
 
-# Only wait for conflicting ffmpeg writes if we actually have files to process
+# Only wait for conflicting destination-device writes if we actually have files
+# to process
 if [[ "$has_files_to_process" == "true" ]]; then
-	wait_for_ffmpeg_device_conflicts
+	wait_for_destination_device_conflicts
 else
 	echo "No files ready to process. Exiting."
 	exit 0
