@@ -17,6 +17,7 @@ declare -a CHANNELS=(
     "nokko|${BASE_STORAGE}/nokko|Nokko"
     "sobuuo|${BASE_STORAGE}/sobuuo|sobuuo"
     "fraiki|${BASE_STORAGE}/fraiki|fraiki"
+    "gumibun|${BASE_STORAGE}/gumibun|gumibun"
     # Add more channels here in the same format:
     # "twitch_username|${BASE_STORAGE}/subfolder|Display Name"
 )
