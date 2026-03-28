@@ -102,8 +102,8 @@ process_channel() {
         --match-filter "!is_live" \
         --playlist-reverse \
         --postprocessor-args 'ffmpeg:-movflags -faststart' \
-        --cookies "${COOKIES_FILE}" \
-        "https://www.twitch.tv/${channel_name}/videos"
+	--cookies "${COOKIES_FILE}" \
+	"https://www.twitch.tv/${channel_name}/videos?filter=archives"
 
     echo "Queued download for ${author_name}"
     echo "---"
