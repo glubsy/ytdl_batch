@@ -1,6 +1,5 @@
 #!/bin/zsh
 
-
 # Purpose: move .ts files from one location to a destination while transcoding them with ffmpeg.
 # 0. load config file, setting location to scan, destinations depending on initial location of file 
 # (need a default location if a change in the initial location was not anticipated)
@@ -11,8 +10,6 @@
 # 5. remove original file, or copy it over in case of error (to avoid letting data pile up and fill up storage device)
 # 6. trigger download subs script in dest dir
 # This script should be executed every 30 minutes by systemd timer, but only one instance of the script should be allowed to run
-#
-#
 
 config_file="${TS_CONFIG:="${HOME}/.config/transcode_ts.config"}"
 
@@ -28,9 +25,9 @@ if [[ ! -e "${config_file}" ]]; then
 fi
 source "${config_file}"
 
-MAX_TIME_DIFF=10  # minutes
-TS_EXT="ts"  # file extension to look for
-VERBOSE=true  # Set to true to log files that are not ready for processing
+MAX_TIME_DIFF=8  	# minutes
+TS_EXT="ts"  		# file extension to look for
+VERBOSE=true  		# Set to true to log files that are not ready for processing
 
 RED="\u001b[31m"
 GREEN="\u001b[32m"
