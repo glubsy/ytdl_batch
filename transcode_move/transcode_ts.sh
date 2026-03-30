@@ -160,6 +160,7 @@ get_file_stats_and_check_ready() {
 has_files_to_process=false
 for orig dest in "${(@kv)destinations}"; do
 	if [[ ! -d "${orig}" ]]; then
+		echo "${YELLOW}${orig} does not exist, skipping${RESET}"
 		continue
 	fi
 	
@@ -206,6 +207,8 @@ for orig dest in "${(@kv)destinations}"; do
 		
 		dest_filename="${filename%.ts}.mp4"
 		echo "Transcoding to: $dest/$dest_filename"
+
+		mkdir -p "${dest}"
 
 		ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}"
 		ffmpeg_exit=$?
