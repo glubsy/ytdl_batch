@@ -99,17 +99,17 @@ is_process_writing_to_destination_device() {
 	return 1
 }
 
-# Wait only if ffmpeg, ytdlp, or yt-dlp is writing to the same destination
-# block device. This is to reduce concurent writes to the same device.
-wait_for_destination_device_conflicts() {
+# Exit early if ffmpeg, ytdlp, or yt-dlp is writing to the same destination
+# block device. This is to reduce concurrent writes to the same device.
+exit_if_destination_device_conflicts() {
 	echo "Checking for active writes on destination block device(s)..."
-	while \
+	if \
 		is_process_writing_to_destination_device "ffmpeg" || \
 		is_process_writing_to_destination_device "ytdlp" || \
-		is_process_writing_to_destination_device "yt-dlp"; do
-		echo "Conflicting ffmpeg/yt-dlp write detected, waiting 5 minutes..."
-		sleep 300  # Wait 5 minutes
-	done
+		is_process_writing_to_destination_device "yt-dlp"; then
+		echo "${YELLOW}Conflicting ffmpeg/yt-dlp write detected on a destination device. Exiting without transcoding.${RESET}"
+		exit 0
+	fi
 	echo "No conflicting destination-device writes detected, proceeding with transcoding"
 }
 
@@ -172,10 +172,10 @@ for orig dest in "${(@kv)destinations}"; do
 	done
 done
 
-# Only wait for conflicting destination-device writes if we actually have files
+# Only check for conflicting destination-device writes if we actually have files
 # to process
 if [[ "$has_files_to_process" == "true" ]]; then
-	wait_for_destination_device_conflicts
+	exit_if_destination_device_conflicts
 else
 	echo "No files ready to process. Exiting."
 	exit 0
