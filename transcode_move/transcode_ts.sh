@@ -35,6 +35,14 @@ YELLOW="\u001b[33;1m"
 MAGENTA="\u001b[35;1m"
 RESET="\u001b[0m"
 
+# FFmpeg can sometimes log fatal-looking demuxing issues while still exiting 0.
+# Treat those stderr messages as a failed transcode.
+ffmpeg_reported_demux_error() {
+	local stderr_log="$1"
+	[[ -f "$stderr_log" ]] || return 1
+	grep -Fq "Error during demuxing" "$stderr_log"
+}
+
 # Return the block-device id (st_dev) for a path, walking up to an existing
 # parent if the path does not exist yet.
 get_block_device_id_for_path() {
@@ -210,15 +218,30 @@ for orig dest in "${(@kv)destinations}"; do
 
 		mkdir -p "${dest}"
 
-		ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}"
+		ffmpeg_stderr_log="$(mktemp /tmp/transcode_ts_ffmpeg_stderr.XXXXXX)"
+		ffmpeg -hide_banner -y -nostats -ignore_unknown -i "${f}" -c copy "${dest}/${dest_filename}" 2> >(tee "${ffmpeg_stderr_log}" >&2)
 		ffmpeg_exit=$?
+		ffmpeg_had_demux_error=false
+		if ffmpeg_reported_demux_error "${ffmpeg_stderr_log}"; then
+			ffmpeg_had_demux_error=true
+			if [[ ${ffmpeg_exit} -eq 0 ]]; then
+				echo "${YELLOW}Warning: ffmpeg exited 0 but reported 'Error during demuxing'; treating this transcode as failed.${RESET}"
+			else
+				echo "${YELLOW}ffmpeg reported 'Error during demuxing'; treating this transcode as failed.${RESET}"
+			fi
+		fi
+		rm -f "${ffmpeg_stderr_log}"
 
-		if [[ ${ffmpeg_exit} -eq 0 ]] && [[ -f "$dest/$dest_filename" ]]; then
+		if [[ ${ffmpeg_exit} -eq 0 ]] && [[ "${ffmpeg_had_demux_error}" != "true" ]] && [[ -f "$dest/$dest_filename" ]]; then
 			echo "${GREEN}Transcoded $f to" \
 			     "$dest/$dest_filename.${RESET}";
 			echo "Removing $f from source..."
 			rm $f
 		else
+			if [[ -f "$dest/$dest_filename" ]]; then
+				echo "${YELLOW}Removing incomplete transcode $dest/$dest_filename before fallback.${RESET}"
+				rm -f "$dest/$dest_filename"
+			fi
 			echo "${YELLOW}ffmpeg's exit code was ${ffmpeg_exit}." \
 			     "Trying to move source file instead of" \
 			     "transcoding...${RESET}"
