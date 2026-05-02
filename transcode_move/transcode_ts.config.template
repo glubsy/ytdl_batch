@@ -2,10 +2,10 @@
 
 declare -A destinations
 
-default_destination="/storage/vtubers_raw_05/vtubers_dump"
+default_destination="/storage/vtubers_raw_06/vtubers_dump"
 
 base_origin="/remote/twitch_monitor"
-base_dest="/storage/vtubers_raw_05/vtubers_dump"
+base_dest="/storage/vtubers_raw_06/vtubers_dump"
 
 destinations=(
 "${base_origin}/chibidoki" "${base_dest}/chibidoki"
@@ -28,12 +28,12 @@ destinations=(
 "${base_origin}/amiomoe" "${base_dest}/amiomoe"
 "${base_origin}/kloekroc" "${base_dest}/kloekroc"
 "${base_origin}/kam0tan" "${base_dest}/kam0tan"
-"${base_origin}/kirariyagi" "${base_dest}/kirariyagi"
+"${base_origin}/himeyagi" "${base_dest}/himeyagi"
 "${base_origin}/marichanduh" "${base_dest}/marichanduh"
 "${base_origin}/natsutsuki_shiki" "${base_dest}/natsutsuki_shiki"
 "${base_origin}/mikanthemink" "${base_dest}/mikanthemink"
 "${base_origin}/rurinemui" "${base_dest}/rurinemui"
-"${base_origin}/dreamyriko" "${base_dest}/dreamyriko"
+"${base_origin}/rikowav" "${base_dest}/rikowav"
 "${base_origin}/yoob" "${base_dest}/yoob"
 "${base_origin}/nekumavt" "${base_dest}/nekumavt"
 "${base_origin}/fraiki" "${base_dest}/fraiki"
@@ -44,5 +44,10 @@ destinations=(
 "${base_origin}/fawoot" "${base_dest}/fawoot"
 "${base_origin}/meltymim" "${base_dest}/meltymim"
 "${base_origin}/gumibun" "${base_dest}/gumibun"
+"${base_origin}/patchumi" "${base_dest}/patchumi"
+"${base_origin}/fluffans" "${base_dest}/fluffans"
+"${base_origin}/goobgoobigooba" "${base_dest}/goobgoobigooba"
 "${base_origin}/almaatada" "${base_dest}/almaatada"
+"${base_origin}/mysko" "${base_dest}/mysko"
+"${base_origin}/fuwieek" "${base_dest}/fuwieek"
 )

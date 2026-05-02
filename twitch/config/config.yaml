@@ -18,6 +18,11 @@ Amiomoe:
   author_name: ["amiomoe"]
   channel_id: "amiomoe"
 
+AlmaAtada:
+  directory_name: "almaatada"
+  author_name: ["almaatada"]
+  channel_id: "almaatada"
+
 Mimomoe:
   directory_name: "amiomoe"  # Same directory as Amiomoe
   author_name: ["mimomoe"]
@@ -38,12 +43,13 @@ Cuemew:
   author_name: ["Cuemew", "cuemew"]
   channel_id: "cuemew"
 
-Dreamy Riko:
-  directory_name: "dreamyriko"
-  author_name: ["Dreamy Riko", "riko"]
-  channel_id: "dreamyriko"
+Riko:
+  directory_name: "rikowav"
+  author_name: ["Dreamy Riko", "riko", "rikowav"]
+  channel_id: "rikowav"
   title_overrides:
   - "I !uwumarket !commission !links !discord +18"
+  - "I !throne !links !discord !clip +18"
 
 Fallenshadow:
   directory_name: "fallenshadow"
@@ -62,6 +68,11 @@ fawoot:
   title_overrides:
     - "!discord !comm"
 
+fluffans:
+  directory_name: "fluffans"
+  author_name: ["fluffans"]
+  channel_id: "fluffans"
+
 FRAIKI:
   directory_name: "fraiki"
   author_name: ["FRAIKI", "fraiki"]
@@ -70,6 +81,12 @@ FRAIKI:
     - "🔴!discord !plush"
     - "🔴 !discord !video"
     - "🔴!discord !moxi !model"
+    - "!video !hoodie"
+
+Fuwieek:
+  directory_name: "fuwieek"
+  author_name: ["fuwieek"]
+  channel_id: "fuwieek"
 
 gumibun:
   directory_name: "gumibun"
@@ -78,6 +95,12 @@ gumibun:
   title_overrides:
     - "🥜 !discord"
     - "🥜"
+    - "!discord"
+
+goobgoobigooba:
+  directory_name: "goobgoobigooba"
+  author_name: ["goobgoobigooba"]
+  channel_id: "goobgoobigooba"
 
 Irina Kumai:
   directory_name: "irinakumai"
@@ -95,6 +118,11 @@ Kamiko Kana:
   directory_name: "kamiko_kana"
   author_name: ["Kamiko Kana", "kana", "KamikoKana"]
   channel_id: "kana"
+
+Mysko:
+  directory_name: "mysko"
+  author_name: ["mysko"]
+  channel_id: "mysko"
 
 Runa:
   directory_name: "runa"
@@ -130,6 +158,7 @@ Mangobtuber:
   channel_id: "mangobtuber"
   title_overrides:
     - "☆ !merch !gg !throne !socials [Birbtuber]"
+    - "☆ !throne !socials !discord [Birbtuber]"
 
 Marichan Duh:
   directory_name: "marichanduh"
@@ -154,9 +183,9 @@ Mikanthemink:
   channel_id: "mikanthemink"
 
 Kirari Yagi:
-  directory_name: "kirariyagi"
-  author_name: ["Moka Kurai", "mokakurai", "kirariyagi"]
-  channel_id: "kirariyagi"
+  directory_name: "himeyagi"
+  author_name: ["Moka Kurai", "mokakurai", "kirariyagi", "himeyagi"]
+  channel_id: "himeyagi"
 
 Natsutsuki Shiki:
   directory_name: "natsutsuki_shiki"
@@ -188,7 +217,7 @@ Pokka:
 Patchumi:
   directory_name: "patchumi"
   author_name: ["patchumi", "patchumivtt"]
-  channel_id: "patchumivtt"
+  channel_id: "patchumii"
 
 Ruri Nemuri:
   directory_name: "rurinemui"
@@ -196,7 +225,7 @@ Ruri Nemuri:
   channel_id: "rurinemui"
   title_overrides:
     - "⋮!vgen !discord !throne"
-    - "⋮ !discord !throne "
+    - "⋮ !discord !throne"
 
 Ruruka Runa:
   directory_name: "rurukaruna"
@@ -214,7 +243,9 @@ Sobuuo:
   channel_id: "sobuuo"
   title_overrides:
     - "!discord !fone"
+    - "!baby !sadguy"
     - "!charmander !pee !fone "
+    - "!ych"
 
 Tatsukkowai:
   directory_name: "tatsukkowai"
@@ -231,7 +262,9 @@ vedal987:
 Yoob:
   directory_name: "yoob"
   author_name: ["Yukoob", "yukoob", "yoob", "yoob_ch"]
-  channel_id: "yoob_ch"
+  channel_id: "yoob"
   title_overrides:
     - "★ !discord"
     - "!youtube !twitter"
+    - "★ !links !throne"
+    - "★ !links"
