@@ -29,7 +29,7 @@ if [[ -z "${ARCHIVE_FILE:-}" ]]; then
     exit 1
 fi
 
-if [[ ${#CHANNELS[@]:-0} -eq 0 ]]; then
+if ! declare -p CHANNELS >/dev/null 2>&1 || [[ ${#CHANNELS[@]} -eq 0 ]]; then
     echo "Error: CHANNELS is empty or not defined in ${CONFIG_FILE}"
     exit 1
 fi
