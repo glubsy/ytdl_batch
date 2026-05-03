@@ -5,25 +5,34 @@
 
 set -euo pipefail
 
-# Base storage path for all channels
-BASE_STORAGE="/storage/vtubers_raw_05/vtubers_dump"
-COOKIES_FILE="${HOME}/Cookies/firefox_cookies.txt"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_FILE="${XDG_CONFIG_HOME}/twitch_download/config.sh"
 
-# Define channels as associative arrays. The author_name is used for the output filename.
-# Format: channel_name|output_path|author_name
+if [[ ! -f "${CONFIG_FILE}" ]]; then
+    echo "Error: Config file not found: ${CONFIG_FILE}"
+    echo "Create it from the example at:"
+    echo "  ${SCRIPT_DIR}/config/config.sh.example"
+    exit 1
+fi
 
-declare -a CHANNELS=(
-    "kana|${BASE_STORAGE}/kamiko_kana|Kamiko Kana"
-    "nokko|${BASE_STORAGE}/nokko|Nokko"
-    "sobuuo|${BASE_STORAGE}/sobuuo|sobuuo"
-    "fraiki|${BASE_STORAGE}/fraiki|fraiki"
-    "gumibun|${BASE_STORAGE}/gumibun|gumibun"
-    # Add more channels here in the same format:
-    # "twitch_username|${BASE_STORAGE}/subfolder|Display Name"
-)
+# shellcheck source=/dev/null
+source "${CONFIG_FILE}"
 
-# Archive file path
-ARCHIVE_FILE="${HOME}/archive.txt"
+if [[ -z "${COOKIES_FILE:-}" ]]; then
+    echo "Error: COOKIES_FILE is not set in ${CONFIG_FILE}"
+    exit 1
+fi
+
+if [[ -z "${ARCHIVE_FILE:-}" ]]; then
+    echo "Error: ARCHIVE_FILE is not set in ${CONFIG_FILE}"
+    exit 1
+fi
+
+if [[ ${#CHANNELS[@]:-0} -eq 0 ]]; then
+    echo "Error: CHANNELS is empty or not defined in ${CONFIG_FILE}"
+    exit 1
+fi
 
 # Wait for ffmpeg processes to finish before starting downloads
 wait_for_ffmpeg_to_finish() {
@@ -113,6 +122,7 @@ process_channel() {
 main() {
     echo "Starting Twitch download script"
     echo "================================"
+    echo "Using config file: ${CONFIG_FILE}"
 
     # Wait for any ffmpeg processes to finish before starting
     wait_for_ffmpeg_to_finish

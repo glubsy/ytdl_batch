@@ -4,10 +4,23 @@ This script downloads Twitch videos for configured channels using `yt-dlp` and `
 
 ## Configuration
 
-Edit `twitch_download.sh` and modify the following:
+Create your config at `$XDG_CONFIG_HOME/twitch_download/config.sh`.
+
+If `XDG_CONFIG_HOME` is unset, the script uses `~/.config/twitch_download/config.sh`.
+
+You can start from the included example:
+
+```bash
+mkdir -p ~/.config/twitch_download
+cp config/config.sh.example ~/.config/twitch_download/config.sh
+```
+
+Then edit the config file and modify the following:
 
 1. **BASE_STORAGE**: Set the base storage path for all downloads
-2. **CHANNELS array**: Add your channels in the format:
+2. **COOKIES_FILE**: Set the path to your exported cookies file
+3. **ARCHIVE_FILE**: Set the path to your yt-dlp archive file
+4. **CHANNELS array**: Add your channels in the format:
    ```bash
    "channel_name|output_path|author_name"
    ```
@@ -118,12 +131,12 @@ Note: The `[vXXXXXXXX]` pattern in the filename is the Twitch video ID, which is
 
 ## Archive Management
 
-The script uses `~/archive.txt` to track downloaded videos and avoid duplicates.
+The script uses the `ARCHIVE_FILE` path from your config to track downloaded videos and avoid duplicates.
 
 ### How it works:
 1. **Pre-download scan**: Before downloading, the script scans existing video files (mp4, mkv, webm, ts) in each channel's output directory.
 2. **ID extraction**: Extracts Twitch video IDs from filenames matching the pattern `[vDIGITS]`.
-3. **Archive update**: Adds extracted IDs to `~/archive.txt` if not already present.
+3. **Archive update**: Adds extracted IDs to the configured archive file if not already present.
 4. **Skip downloads**: yt-dlp automatically skips any videos with IDs already in the archive.
 
 This ensures that videos already present in your storage won't be re-downloaded, even if they weren't previously tracked in the archive file.

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Base storage path for all channels
+BASE_STORAGE="/storage/vtubers_raw_05/vtubers_dump"
+COOKIES_FILE="${HOME}/Cookies/firefox_cookies.txt"
+ARCHIVE_FILE="${HOME}/archive.txt"
+
+# Format: channel_name|output_path|author_name
+declare -a CHANNELS=(
+    "kana|${BASE_STORAGE}/kamiko_kana|Kamiko Kana"
+    "nokko|${BASE_STORAGE}/nokko|Nokko"
+    "sobuuo|${BASE_STORAGE}/sobuuo|sobuuo"
+    "fraiki|${BASE_STORAGE}/fraiki|fraiki"
+    "gumibun|${BASE_STORAGE}/gumibun|gumibun"
+    # "twitch_username|${BASE_STORAGE}/subfolder|Display Name"
+)
