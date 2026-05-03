@@ -39,10 +39,13 @@ po_token_path : "~/youtube_po_token.txt"
 
 # Channel configurations
 ChannelName:
+  weight: 100  # optional, higher weights are processed first
   download_path: "/path/to/download/directory"
   archive_path: "/path/to/archive.txt"
   channel_id: "@username"  # or "UCxxxxxxxxxxxxxxxxxxxxxxx"
 ```
+
+If `weight` is omitted, the script uses `0`.
 
 ### Setup Steps
 
@@ -80,6 +83,7 @@ chmod +x vod_download.sh
 ## Features
 
 - **Multiple channels**: Process all channels defined in config
+- **Weighted ordering**: Higher-priority channels run first via per-channel `weight`
 - **Archive support**: Prevents re-downloading existing videos
 - **Live chat**: Downloads live chat as subtitles
 - **Error handling**: Continues with other channels if one fails

@@ -10,6 +10,8 @@ po_token_path : "~/youtube_po_token.txt"
 # Each entry corresponds to a channel with its associated metadata.
 #
 # Fields:
+#   weight: (Optional) Processing priority for this channel. Higher weights are processed first.
+#           If omitted, defaults to 0.
 #   download_path: The local directory path where the channel's VODs will be downloaded.
 #   archive_path: The path to the archive file that keeps track of downloaded VODs.
 #   channel_id: The YouTube channel ID or handle for this author.
@@ -18,12 +20,14 @@ po_token_path : "~/youtube_po_token.txt"
 #         Example: ["videos", "shorts", "streams"]
 
 Komachi Panko:
+  weight: 100
   download_path: "/path/to/Komachi Panko/youtube"
   archive_path: "/path/to/Komachi Panko/youtube/archive.txt"
   channel_id: "@komachipanko"
   tabs: ["streams"]  # Optional: if omitted, uses base channel URL without /tab suffix
 
 Sameko Saba:
+  weight: 50
   download_path: "/path/to/Sameko Saba"
   archive_path: "/path/to/Sameko Saba/archive.txt"
   channel_id: "@SamekoSaba"

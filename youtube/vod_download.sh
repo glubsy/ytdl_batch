@@ -171,9 +171,14 @@ download_channel() {
     echo ""
 }
 
-# Get all channel names from the channels document (the one without cookies_path)
+# Get all channel names from the channels document (the one without cookies_path),
+# ordered by descending weight so higher-priority channels run first.
 echo "Getting channel list..."
-mapfile -t CHANNEL_NAMES < <(yq -r 'select(.cookies_path | not) | keys[]' "$CONFIG_FILE")
+mapfile -t CHANNEL_NAMES < <(
+    yq -r 'select(.cookies_path | not) | to_entries[] | [(.value.weight // 0), .key] | @tsv' "$CONFIG_FILE" \
+    | sort -t $'\t' -k1,1nr -k2,2 \
+    | cut -f2-
+)
 
 if [[ ${#CHANNEL_NAMES[@]} -eq 0 ]]; then
     echo "No channels found in config file."
@@ -181,7 +186,10 @@ if [[ ${#CHANNEL_NAMES[@]} -eq 0 ]]; then
 fi
 
 echo "Found ${#CHANNEL_NAMES[@]} channels to process:"
-printf '%s\n' "${CHANNEL_NAMES[@]}"
+for channel_name in "${CHANNEL_NAMES[@]}"; do
+    channel_weight=$(yq -r "select(.cookies_path | not) | .[\"$channel_name\"].weight // 0" "$CONFIG_FILE")
+    printf '%s (weight: %s)\n' "$channel_name" "$channel_weight"
+done
 echo ""
 
 # Process each channel
@@ -223,4 +231,3 @@ for channel_name in "${CHANNEL_NAMES[@]}"; do
 done
 
 echo "All channels processed!"
-
