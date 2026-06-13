@@ -117,6 +117,7 @@ download_channel() {
         --xattrs
         --no-part
         --abort-on-unavailable-fragments
+        --trim-filenames 252
         --download-archive "$archive_path"
         --playlist-reverse
         --add-metadata
