@@ -11,11 +11,8 @@ A bash script that downloads YouTube VODs and live chats using yt-dlp for multip
 ### Install Dependencies
 
 ```bash
-# Install yt-dlp
-pip install yt-dlp
-
-# Install yq (Python version)
-pip install yq
+# Install yt-dlp, POT provier qnd yq (Python version)
+pip install yt-dlp bgutil-ytdlp-pot-provider yq
 ```
 
 ## Configuration
@@ -33,8 +30,6 @@ The YAML file contains two documents separated by `---`:
 ```yaml
 # Global settings
 cookies_path : "~/youtube_cookies.txt"
-po_token_path : "~/youtube_po_token.txt"
-
 ---
 
 # Channel configurations
@@ -61,8 +56,7 @@ If `weight` is omitted, the script uses `0`.
    ```
 
 3. **Set up authentication files:**
-   - Export cookies from browser to `cookies_path`
-   - Obtain PO token and save to `po_token_path`
+   - [Export cookies](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies) from your browser to `cookies_path` 
 
 4. **Create download directories:**
    ```bash
@@ -101,11 +95,9 @@ YYYYMMDD [Channel Name] Video Title [Height][Video ID].ext
 
 - **"yq command not found"**: Install yq v3.x (`pip install yq`)
 - **"Config file not found"**: Check file exists in expected locations
-- **Authentication errors**: Verify cookies and PO token files exist and are valid
 - **Download failures**: Check network connection and YouTube availability
 
 ## Notes
 
 - Script requires yq v3.x (Python-based), not v4.x (Go-based)
-- PO token helps with YouTube's anti-bot measures
-- Fresh cookies may be needed periodically
+- Regenerating cookies periodically may be necessary

@@ -2,7 +2,6 @@
 # Global settings for downloading VODs from YouTube channels.
 
 cookies_path : "~/youtube_cookies.txt"
-po_token_path : "~/youtube_po_token.txt"
 
 ---
 
