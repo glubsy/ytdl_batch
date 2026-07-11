@@ -38,7 +38,6 @@ destinations=(
 "${base_origin}/nekumavt" "${base_dest}/nekumavt"
 "${base_origin}/fraiki" "${base_dest}/fraiki"
 "${base_origin}/penkoro" "${base_dest}/penkoro"
-"${base_origin}/pokkavt" "${base_dest}/pokkavt"
 "${base_origin}/nokko" "${base_dest}/nokko"
 "${base_origin}/sobuuo" "${base_dest}/sobuuo"
 "${base_origin}/fawoot" "${base_dest}/fawoot"
