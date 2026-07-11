@@ -1,0 +1,132 @@
+#!/bin/bash
+
+DETACH=0
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/tmux_livestreams"
+TARGET="youtube"
+
+if [ "${1}" = "--detach" ]; then
+	DETACH=1
+fi
+
+load_local_config() {
+	# shellcheck disable=SC1090
+	[ -f "${CONFIG_DIR}/youtube.local.sh" ] && . "${CONFIG_DIR}/youtube.local.sh"
+	# shellcheck disable=SC1090
+	[ -z "${BGUTIL_PROVIDER_DIR:-}" ] && [ -f "${SCRIPT_DIR}/youtube.local.sh" ] && . "${SCRIPT_DIR}/youtube.local.sh"
+}
+
+load_local_config
+
+DOWNLOAD_TARGET="${DOWNLOAD_TARGET:-${HOME}/livestreams}"
+
+if [ -z "${SESS_NAME:-}" ]; then
+	SESS_NAME="${TARGET}_monitor"
+fi
+
+if [ -z "${DEF_FILE:-}" ]; then
+	DEF_FILE="/tmp/tmux_${TARGET}_livestream_session_definition"
+fi
+
+if [ -z "${BGUTIL_PROVIDER_DIR:-}" ] || [ -z "${LS_SAVER:-}" ]; then
+	echo "Missing YouTube livestream config"
+	exit 1
+fi
+
+if ! declare -p YT_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p YT_STREAMERS >/dev/null 2>&1; then
+	echo "Missing YouTube streamer definitions"
+	exit 1
+fi
+
+# Make sure to
+# ln -s /path/to/${LS_SAVER}.py ${HOME}/bin/${LS_SAVER}; chmod +x ${HOME}/bin/${LS_SAVER}
+# Might have to copy the symlink into ${HOME}/venv/bin/ too
+LS_SAVER_CMD="source ${HOME}/venv/bin/activate && ${LS_SAVER} monitor"
+
+ensure_bgutil_provider() {
+	if [ ! -d "${HOME}/opt" ]; then
+		mkdir -p "${HOME}/opt"
+	fi
+
+	if [ ! -d "${BGUTIL_PROVIDER_DIR}" ]; then
+		git init "${BGUTIL_PROVIDER_DIR}"
+		cd "${BGUTIL_PROVIDER_DIR}" || exit 1
+		git remote add origin https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git
+		if [ -n "${BGUTIL_PROVIDER_COMMIT:-}" ]; then
+			git fetch --depth 1 origin "${BGUTIL_PROVIDER_COMMIT}"
+		else
+			git fetch --depth 1 origin HEAD
+		fi
+		git checkout FETCH_HEAD
+		deno install --allow-scripts=npm:canvas --frozen
+	else
+		cd "${BGUTIL_PROVIDER_DIR}" || exit 1
+	fi
+}
+
+ensure_latest_ytdlp() {
+	if [ ! -d "${HOME}/venv" ] || [ ! -f "${HOME}/venv/bin/activate" ]; then
+		return
+	fi
+
+	# shellcheck disable=SC1091
+	source "${HOME}/venv/bin/activate"
+	pip install --upgrade yt-dlp
+	pip install --upgrade bgutil-ytdlp-pot-provider
+	deactivate
+}
+
+start_bgutil_provider() {
+	ensure_bgutil_provider
+
+	if pgrep -f "bgutil-ytdlp-pot-provider/.*/src/main.ts" >/dev/null 2>&1; then
+		return
+	fi
+
+	cd "${BGUTIL_PROVIDER_DIR}/server/node_modules" || exit 1
+	deno run --allow-env --allow-net --allow-ffi=. --allow-read=. ../src/main.ts 2>&1 >/dev/null &
+	# Uncomment to store logs in a file instead of discarding them:
+	# >"${HOME}/.cache/bgutil-ytdlp-pot-provider.log" 2>&1 &
+}
+
+YT_DEF="#set-option remain-on-exit on\n"
+len=${#YT_STREAMER_INDEX[@]}
+i=0
+while [ $i -lt $len ]; do
+	name1="${YT_STREAMER_INDEX[$i]}"
+	IFS='|' read -r dir1 disp1 qual1 <<< "${YT_STREAMERS[$name1]}"
+	if [ $((i+1)) -lt $len ]; then
+		name2="${YT_STREAMER_INDEX[$((i+1))]}"
+		IFS='|' read -r dir2 disp2 qual2 <<< "${YT_STREAMERS[$name2]}"
+		YT_DEF+=$'\n'
+		YT_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
+		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual1} -d -s ${disp1}\" C-m\n"
+		YT_DEF+="split-window -v -c \"${DOWNLOAD_TARGET}/${dir2}\"\n"
+		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual2} -d -s ${disp2}\" C-m\n"
+		i=$((i+2))
+	else
+		YT_DEF+=$'\n'
+		YT_DEF+="neww -n \"${name1}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
+		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual1} -d -s ${disp1}\" C-m\n"
+		i=$((i+1))
+	fi
+done
+
+DEF=${YT_DEF}
+ensure_latest_ytdlp
+start_bgutil_provider
+
+echo "Recreating ${SESS_NAME} definition file as \"${DEF_FILE}\"..."
+printf "%b" "${DEF}" > "${DEF_FILE}"
+
+if [ "${DETACH}" -eq 1 ]; then
+	if tmux has-session -t "${SESS_NAME}" >/dev/null 2>&1; then
+		echo "tmux session \"${SESS_NAME}\" already exists"
+	else
+		echo "Starting new tmux session \"${SESS_NAME}\""
+		tmux new-session -d -s "${SESS_NAME}" -P "tmux source-file ${DEF_FILE}"
+	fi
+else
+	tmux attach -t "${SESS_NAME}" ||
+	echo "Starting new tmux session \"${SESS_NAME}\""; tmux new-session -s "${SESS_NAME}" -P "tmux source-file ${DEF_FILE}" ;
+fi

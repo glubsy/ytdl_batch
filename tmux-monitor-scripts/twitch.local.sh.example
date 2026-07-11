@@ -1,0 +1,27 @@
+# Twitch livestream local configuration.
+DOWNLOAD_TARGET="${HOME}/livestreams"
+# save_livestream.py path for Twitch usage (wrapper script around streamlink)
+# https://github.com/mrwnwttk/livestream_scripts
+SL_PATH="${SL_PATH}"
+if [ -z "${SL_PATH}" ]; then
+	SL_PATH="${HOME}/bin/save_livestream"
+fi
+# Assuming streamlink is installed in a python venv at ${HOME}/venv
+if [ -d "${HOME}/venv" ] && [ -f "${HOME}/venv/bin/streamlink" ]; then
+	SL_CMD="source ${HOME}/venv/bin/activate && python ${SL_PATH}"
+else
+	SL_CMD="python3 ${SL_PATH}"
+fi
+
+# Each entry: dir|author|url|displ
+# dir: target dirname
+# author: name for downloader and destination filename
+# URL: URL for downloader
+# disp: tmux pane display name
+TTV_STREAMER_INDEX=(
+	"your_streamer"
+)
+
+# Each entry: dir|author|url|displ
+declare -A TTV_STREAMERS
+TTV_STREAMERS["your_streamer"]="your_streamer|your_streamer|https://www.twitch.tv/your_streamer|your_streamer"

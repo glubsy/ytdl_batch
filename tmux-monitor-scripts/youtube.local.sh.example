@@ -1,0 +1,20 @@
+# YouTube livestream local configuration.
+DOWNLOAD_TARGET="${HOME}/livestreams"
+BGUTIL_PROVIDER_DIR="${HOME}/opt/bgutil-ytdlp-pot-provider"
+BGUTIL_PROVIDER_COMMIT="6b497de5a6cbaf106bd94a934c5d2794c3fdf8bb"  # Update or leave empty for latest commit
+LS_SAVER="livestream_saver"
+
+# Preserve order using an indexed array, and use an associative array for data
+
+# Each entry is also used as tmux pane name
+# Each entry: dir|disp|qual
+# dir: target dirname
+# disp: name in LS_Saver config file
+# qual: stream quality for livestream-saver
+YT_STREAMER_INDEX=(
+	"your_channel"
+)
+
+# Each entry: dir|disp|qual
+declare -A YT_STREAMERS
+YT_STREAMERS["your_channel"]="your_channel|your_channel|480"

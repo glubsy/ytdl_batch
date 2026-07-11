@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically check the Twitch tmux livestream session for %i
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=3min
+Unit=tmux-livestreams-twitch-watch@%i.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

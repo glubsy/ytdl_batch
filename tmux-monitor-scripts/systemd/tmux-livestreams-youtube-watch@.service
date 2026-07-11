@@ -1,0 +1,13 @@
+[Unit]
+Description=Ensure the YouTube tmux livestream session exists for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=%i
+Group=%i
+WorkingDirectory=%h/opt
+EnvironmentFile=-/etc/default/tmux-livestreams-youtube@%i
+ExecStartPre=/bin/sh -c 'if [ -n "$WG_SERVICE" ]; then until systemctl is-active --quiet "$WG_SERVICE"; do sleep 5; done; fi'
+ExecStart=%h/opt/tmux_livestreams.sh youtube --detach
