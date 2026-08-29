@@ -103,15 +103,18 @@ while [ $i -lt $len ]; do
 		IFS='|' read -r dir2 author2 url2 disp2 <<< "${TTV_STREAMERS["$name2"]}"
 		TTV_DEF+=$'\n'
 		TTV_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
-		TTV_DEF+="send-keys \"${SL_CMD} --author-name \"${author1}\" \"${url1}\"\" C-m\n"
+		cmd1="$(build_twitch_cmd "$author1" "$url1")"
+		TTV_DEF+="send-keys \"${cmd1}\" C-m\n"
 		TTV_DEF+="split-window -v -c \"${DOWNLOAD_TARGET}/${dir2}\"\n"
-		TTV_DEF+="send-keys \"${SL_CMD} --author-name \"${author2}\" \"${url2}\"\" C-m\n"
+		cmd2="$(build_twitch_cmd "$author2" "$url2")"
+		TTV_DEF+="send-keys \"${cmd2}\" C-m\n"
 		i=$((i+2))
 	else
 		# Odd one out: single window
 		TTV_DEF+=$'\n'
 		TTV_DEF+="neww -n \"${name1}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
-		TTV_DEF+="send-keys \"${SL_CMD} --author-name \"${author1}\" \"${url1}\"\" C-m\n"
+		cmd1="$(build_twitch_cmd "$author1" "$url1")"
+		TTV_DEF+="send-keys \"${cmd1}\" C-m\n"
 		i=$((i+1))
 	fi
 done

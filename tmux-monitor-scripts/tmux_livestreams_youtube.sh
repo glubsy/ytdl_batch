@@ -137,14 +137,17 @@ while [ $i -lt $len ]; do
 		IFS='|' read -r dir2 disp2 qual2 <<< "${YT_STREAMERS["$name2"]}"
 		YT_DEF+=$'\n'
 		YT_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
-		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual1} -d -s ${disp1}\" C-m\n"
+		cmd1="$(build_youtube_cmd "$qual1" "$disp1")"
+		YT_DEF+="send-keys \"${cmd1}\" C-m\n"
 		YT_DEF+="split-window -v -c \"${DOWNLOAD_TARGET}/${dir2}\"\n"
-		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual2} -d -s ${disp2}\" C-m\n"
+		cmd2="$(build_youtube_cmd "$qual2" "$disp2")"
+		YT_DEF+="send-keys \"${cmd2}\" C-m\n"
 		i=$((i+2))
 	else
 		YT_DEF+=$'\n'
 		YT_DEF+="neww -n \"${name1}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
-		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual1} -d -s ${disp1}\" C-m\n"
+		cmd1="$(build_youtube_cmd "$qual1" "$disp1")"
+		YT_DEF+="send-keys \"${cmd1}\" C-m\n"
 		i=$((i+1))
 	fi
 done
