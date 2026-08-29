@@ -125,6 +125,19 @@ class TwitchScanner(BaseScanner):
   # Format is usually YYYYMMDD_twitchId
   subt_regex =  re.compile(twitch_sub_file_pattern, re.IGNORECASE)
 
+  def _ignore_id(self, _id: str, filename: str) -> bool:
+    """
+    Twitch Video Ids that start with a 3 should be ignored because they are usually
+    not valid anymore by the time we try to download them. Once they become a VOD
+    their Id will start with a 2.
+    """
+    if _id.startswith("3"):
+      log.warning(
+        f"Warning: ignoring Twitch video id {_id} in {filename} because it starts with 3.",
+      )
+      return True
+    return False
+
   def match(self, root: str, filename: str) -> bool:
     match = self.subt_regex.match(filename)
     if match is not None:
@@ -133,6 +146,8 @@ class TwitchScanner(BaseScanner):
       #   log.debug("No extension matched. Trying again for media file...")
       #   pass
       _id = match.group("id")
+      if self._ignore_id(_id, filename):
+        return False
       self.store[_id][1].append(Path(Path(root) / Path(filename)))
       return True
     log.debug(f"{__class__} no sub file match for {filename}")
@@ -146,6 +161,8 @@ class TwitchScanner(BaseScanner):
         _id = m.group("id")
 
         if not _id:
+          continue
+        if self._ignore_id(_id, filename):
           continue
 
         _ext = m.group("extension")
