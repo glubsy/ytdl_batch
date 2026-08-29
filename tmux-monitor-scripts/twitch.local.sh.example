@@ -13,15 +13,16 @@ else
 	SL_CMD="python3 ${SL_PATH}"
 fi
 
-# Each entry: dir|author|url|displ
-# dir: target dirname
-# author: name for downloader and destination filename
-# URL: URL for downloader
-# disp: tmux pane display name
+# Define the broadcasters that should be monitored for here.
 TTV_STREAMER_INDEX=(
 	"your_streamer"
 )
 
+# Define the broadcasters we should know about here.
 # Each entry: dir|author|url|displ
+# dir: target directory name
+# author: for the destination filename, used by the downloader
+# URL: URL for downloader
+# disp: display name for the tmux pane
 declare -gA TTV_STREAMERS
 TTV_STREAMERS["your_streamer"]="your_streamer|your_streamer|https://www.twitch.tv/your_streamer|your_streamer"
