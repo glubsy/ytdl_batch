@@ -15,17 +15,20 @@ load_local_config() {
 	# shellcheck disable=SC1090
 	if [ -f "${CONFIG_FILE}" ]; then
 		. "${CONFIG_FILE}"
-		return 0
-	fi
-
-	# shellcheck disable=SC1090
-	if [ -f "${SCRIPT_DIR}/twitch.local.sh" ]; then
+	elif [ -f "${SCRIPT_DIR}/twitch.local.sh" ]; then
 		CONFIG_FILE="${SCRIPT_DIR}/twitch.local.sh"
+		# shellcheck disable=SC1090
 		. "${CONFIG_FILE}"
-		return 0
+	else
+		return 1
 	fi
 
-	return 1
+	if ! declare -p TTV_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p TTV_STREAMERS >/dev/null 2>&1; then
+		echo "Error: sourced Twitch config file ${CONFIG_FILE} must define TTV_STREAMER_INDEX and TTV_STREAMERS"
+		return 1
+	fi
+
+	return 0
 }
 
 if ! load_local_config; then
