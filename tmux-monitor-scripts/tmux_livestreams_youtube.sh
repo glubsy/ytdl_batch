@@ -106,10 +106,10 @@ len=${#YT_STREAMER_INDEX[@]}
 i=0
 while [ $i -lt $len ]; do
 	name1="${YT_STREAMER_INDEX[$i]}"
-	IFS='|' read -r dir1 disp1 qual1 <<< "${YT_STREAMERS[$name1]}"
+	IFS='|' read -r dir1 disp1 qual1 <<< "${YT_STREAMERS["$name1"]}"
 	if [ $((i+1)) -lt $len ]; then
 		name2="${YT_STREAMER_INDEX[$((i+1))]}"
-		IFS='|' read -r dir2 disp2 qual2 <<< "${YT_STREAMERS[$name2]}"
+		IFS='|' read -r dir2 disp2 qual2 <<< "${YT_STREAMERS["$name2"]}"
 		YT_DEF+=$'\n'
 		YT_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
 		YT_DEF+="send-keys \"${LS_SAVER_CMD} -q ${qual1} -d -s ${disp1}\" C-m\n"
