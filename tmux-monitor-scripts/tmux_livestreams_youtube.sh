@@ -11,10 +11,20 @@ fi
 
 CONFIG_FILE="${CONFIG_DIR}/youtube.local.sh"
 
+promote_config_array() {
+	local array_name="$1" declaration
+	declaration="$(declare -p "$array_name" 2>/dev/null)" || return 0
+	declaration="${declaration/declare -a/declare -ga}"
+	declaration="${declaration/declare -A/declare -gA}"
+	eval "$declaration"
+}
+
 load_local_config() {
 	# shellcheck disable=SC1090
 	if [ -f "${CONFIG_FILE}" ]; then
 		. "${CONFIG_FILE}"
+	promote_config_array YT_STREAMER_INDEX
+	promote_config_array YT_STREAMERS
 		return 0
 	fi
 
@@ -22,6 +32,8 @@ load_local_config() {
 	if [ -f "${SCRIPT_DIR}/youtube.local.sh" ]; then
 		CONFIG_FILE="${SCRIPT_DIR}/youtube.local.sh"
 		. "${CONFIG_FILE}"
+	promote_config_array YT_STREAMER_INDEX
+	promote_config_array YT_STREAMERS
 		return 0
 	fi
 

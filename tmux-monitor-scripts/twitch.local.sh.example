@@ -23,5 +23,5 @@ TTV_STREAMER_INDEX=(
 )
 
 # Each entry: dir|author|url|displ
-declare -A TTV_STREAMERS
+declare -gA TTV_STREAMERS
 TTV_STREAMERS["your_streamer"]="your_streamer|your_streamer|https://www.twitch.tv/your_streamer|your_streamer"

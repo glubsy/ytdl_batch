@@ -11,14 +11,26 @@ fi
 
 CONFIG_FILE="${CONFIG_DIR}/twitch.local.sh"
 
+promote_config_array() {
+	local array_name="$1" declaration
+	declaration="$(declare -p "$array_name" 2>/dev/null)" || return 0
+	declaration="${declaration/declare -a/declare -ga}"
+	declaration="${declaration/declare -A/declare -gA}"
+	eval "$declaration"
+}
+
 load_local_config() {
 	# shellcheck disable=SC1090
 	if [ -f "${CONFIG_FILE}" ]; then
 		. "${CONFIG_FILE}"
+	promote_config_array TTV_STREAMER_INDEX
+	promote_config_array TTV_STREAMERS
 	elif [ -f "${SCRIPT_DIR}/twitch.local.sh" ]; then
 		CONFIG_FILE="${SCRIPT_DIR}/twitch.local.sh"
 		# shellcheck disable=SC1090
 		. "${CONFIG_FILE}"
+	promote_config_array TTV_STREAMER_INDEX
+	promote_config_array TTV_STREAMERS
 	else
 		return 1
 	fi

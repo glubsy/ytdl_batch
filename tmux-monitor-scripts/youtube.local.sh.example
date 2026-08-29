@@ -16,5 +16,5 @@ YT_STREAMER_INDEX=(
 )
 
 # Each entry: dir|disp|qual
-declare -A YT_STREAMERS
+declare -gA YT_STREAMERS
 YT_STREAMERS["your_channel"]="your_channel|your_channel|480"
