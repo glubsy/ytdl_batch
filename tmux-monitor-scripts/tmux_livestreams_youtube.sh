@@ -50,11 +50,6 @@ if [ -z "${BGUTIL_PROVIDER_DIR:-}" ] || [ -z "${LS_SAVER:-}" ]; then
 	exit 1
 fi
 
-if ! declare -p YT_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p YT_STREAMERS >/dev/null 2>&1; then
-	echo "Error: ${CONFIG_FILE} must define YT_STREAMER_INDEX and YT_STREAMERS"
-	exit 1
-fi
-
 # Make sure to
 # ln -s /path/to/${LS_SAVER}.py ${HOME}/bin/${LS_SAVER}; chmod +x ${HOME}/bin/${LS_SAVER}
 # Might have to copy the symlink into ${HOME}/venv/bin/ too

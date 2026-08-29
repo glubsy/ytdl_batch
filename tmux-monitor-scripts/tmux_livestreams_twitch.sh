@@ -45,11 +45,6 @@ if [ -z "${DEF_FILE:-}" ]; then
 	DEF_FILE="/tmp/tmux_${TARGET}_livestream_session_definition"
 fi
 
-if ! declare -p TTV_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p TTV_STREAMERS >/dev/null 2>&1; then
-	echo "Error: sourced Twitch config file ${CONFIG_FILE} must define TTV_STREAMER_INDEX and TTV_STREAMERS"
-	exit 1
-fi
-
 # save_livestream.py path for Twitch usage (wrapper script around streamlink)
 # https://github.com/mrwnwttk/livestream_scripts
 SL_PATH="${SL_PATH}"

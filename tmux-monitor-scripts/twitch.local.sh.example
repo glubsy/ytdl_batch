@@ -2,7 +2,7 @@
 DOWNLOAD_TARGET="${HOME}/livestreams"
 # save_livestream.py path for Twitch usage (wrapper script around streamlink)
 # https://github.com/mrwnwttk/livestream_scripts
-SL_PATH="${SL_PATH}"
+SL_PATH="${SL_PATH:-}"
 if [ -z "${SL_PATH}" ]; then
 	SL_PATH="${HOME}/bin/save_livestream"
 fi
