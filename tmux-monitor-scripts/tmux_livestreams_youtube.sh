@@ -9,14 +9,29 @@ if [ "${1}" = "--detach" ]; then
 	DETACH=1
 fi
 
+CONFIG_FILE="${CONFIG_DIR}/youtube.local.sh"
+
 load_local_config() {
 	# shellcheck disable=SC1090
-	[ -f "${CONFIG_DIR}/youtube.local.sh" ] && . "${CONFIG_DIR}/youtube.local.sh"
+	if [ -f "${CONFIG_FILE}" ]; then
+		. "${CONFIG_FILE}"
+		return 0
+	fi
+
 	# shellcheck disable=SC1090
-	[ -z "${BGUTIL_PROVIDER_DIR:-}" ] && [ -f "${SCRIPT_DIR}/youtube.local.sh" ] && . "${SCRIPT_DIR}/youtube.local.sh"
+	if [ -f "${SCRIPT_DIR}/youtube.local.sh" ]; then
+		CONFIG_FILE="${SCRIPT_DIR}/youtube.local.sh"
+		. "${CONFIG_FILE}"
+		return 0
+	fi
+
+	return 1
 }
 
-load_local_config
+if ! load_local_config; then
+	echo "Error: expected YouTube config file at ${CONFIG_FILE}"
+	exit 1
+fi
 
 DOWNLOAD_TARGET="${DOWNLOAD_TARGET:-${HOME}/livestreams}"
 
@@ -29,12 +44,12 @@ if [ -z "${DEF_FILE:-}" ]; then
 fi
 
 if [ -z "${BGUTIL_PROVIDER_DIR:-}" ] || [ -z "${LS_SAVER:-}" ]; then
-	echo "Missing YouTube livestream config"
+	echo "Error: ${CONFIG_FILE} must define BGUTIL_PROVIDER_DIR and LS_SAVER"
 	exit 1
 fi
 
 if ! declare -p YT_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p YT_STREAMERS >/dev/null 2>&1; then
-	echo "Missing YouTube streamer definitions"
+	echo "Error: ${CONFIG_FILE} must define YT_STREAMER_INDEX and YT_STREAMERS"
 	exit 1
 fi
 

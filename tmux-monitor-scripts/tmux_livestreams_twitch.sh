@@ -9,14 +9,29 @@ if [ "${1}" = "--detach" ]; then
 	DETACH=1
 fi
 
+CONFIG_FILE="${CONFIG_DIR}/twitch.local.sh"
+
 load_local_config() {
 	# shellcheck disable=SC1090
-	[ -f "${CONFIG_DIR}/twitch.local.sh" ] && . "${CONFIG_DIR}/twitch.local.sh"
+	if [ -f "${CONFIG_FILE}" ]; then
+		. "${CONFIG_FILE}"
+		return 0
+	fi
+
 	# shellcheck disable=SC1090
-	[ -z "${SL_PATH:-}" ] && [ -f "${SCRIPT_DIR}/twitch.local.sh" ] && . "${SCRIPT_DIR}/twitch.local.sh"
+	if [ -f "${SCRIPT_DIR}/twitch.local.sh" ]; then
+		CONFIG_FILE="${SCRIPT_DIR}/twitch.local.sh"
+		. "${CONFIG_FILE}"
+		return 0
+	fi
+
+	return 1
 }
 
-load_local_config
+if ! load_local_config; then
+	echo "Error: expected Twitch config file at ${CONFIG_FILE}"
+	exit 1
+fi
 
 DOWNLOAD_TARGET="${DOWNLOAD_TARGET:-${HOME}/livestreams}"
 
@@ -29,7 +44,7 @@ if [ -z "${DEF_FILE:-}" ]; then
 fi
 
 if ! declare -p TTV_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p TTV_STREAMERS >/dev/null 2>&1; then
-	echo "Error: expected Twitch config file at ${CONFIG_DIR}/twitch.local.sh"
+	echo "Error: ${CONFIG_FILE} must define TTV_STREAMER_INDEX and TTV_STREAMERS"
 	exit 1
 fi
 
