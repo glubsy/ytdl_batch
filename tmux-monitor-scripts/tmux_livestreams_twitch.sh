@@ -28,6 +28,11 @@ load_local_config() {
 		return 1
 	fi
 
+	if [ "${TMUX_LIVESTREAMS_DEBUG:-0}" = "1" ]; then
+		echo "Debug: loaded ${CONFIG_FILE}" >&2
+		declare -p TTV_STREAMER_INDEX TTV_STREAMERS >&2
+	fi
+
 	return 0
 }
 

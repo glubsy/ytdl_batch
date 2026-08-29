@@ -50,6 +50,11 @@ if [ -z "${BGUTIL_PROVIDER_DIR:-}" ] || [ -z "${LS_SAVER:-}" ]; then
 	exit 1
 fi
 
+if [ "${TMUX_LIVESTREAMS_DEBUG:-0}" = "1" ]; then
+	echo "Debug: loaded ${CONFIG_FILE}" >&2
+	declare -p YT_STREAMER_INDEX YT_STREAMERS >&2
+fi
+
 # Make sure to
 # ln -s /path/to/${LS_SAVER}.py ${HOME}/bin/${LS_SAVER}; chmod +x ${HOME}/bin/${LS_SAVER}
 # Might have to copy the symlink into ${HOME}/venv/bin/ too
