@@ -33,6 +33,8 @@ if ! load_local_config; then
 	exit 1
 fi
 
+echo "Using YouTube config file: ${CONFIG_FILE}"
+
 DOWNLOAD_TARGET="${DOWNLOAD_TARGET:-${HOME}/livestreams}"
 
 if [ -z "${SESS_NAME:-}" ]; then
@@ -44,7 +46,7 @@ if [ -z "${DEF_FILE:-}" ]; then
 fi
 
 if [ -z "${BGUTIL_PROVIDER_DIR:-}" ] || [ -z "${LS_SAVER:-}" ]; then
-	echo "Error: ${CONFIG_FILE} must define BGUTIL_PROVIDER_DIR and LS_SAVER"
+	echo "Error: sourced YouTube config file ${CONFIG_FILE} must define BGUTIL_PROVIDER_DIR and LS_SAVER"
 	exit 1
 fi
 

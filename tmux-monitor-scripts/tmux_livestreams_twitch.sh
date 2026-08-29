@@ -33,6 +33,8 @@ if ! load_local_config; then
 	exit 1
 fi
 
+echo "Using Twitch config file: ${CONFIG_FILE}"
+
 DOWNLOAD_TARGET="${DOWNLOAD_TARGET:-${HOME}/livestreams}"
 
 if [ -z "${SESS_NAME:-}" ]; then
@@ -44,7 +46,7 @@ if [ -z "${DEF_FILE:-}" ]; then
 fi
 
 if ! declare -p TTV_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p TTV_STREAMERS >/dev/null 2>&1; then
-	echo "Error: ${CONFIG_FILE} must define TTV_STREAMER_INDEX and TTV_STREAMERS"
+	echo "Error: sourced Twitch config file ${CONFIG_FILE} must define TTV_STREAMER_INDEX and TTV_STREAMERS"
 	exit 1
 fi
 
