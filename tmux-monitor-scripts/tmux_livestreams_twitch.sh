@@ -29,7 +29,7 @@ if [ -z "${DEF_FILE:-}" ]; then
 fi
 
 if ! declare -p TTV_STREAMER_INDEX >/dev/null 2>&1 || ! declare -p TTV_STREAMERS >/dev/null 2>&1; then
-	echo "Missing Twitch streamer definitions"
+	echo "Error: expected Twitch config file at ${CONFIG_DIR}/twitch.local.sh"
 	exit 1
 fi
 
