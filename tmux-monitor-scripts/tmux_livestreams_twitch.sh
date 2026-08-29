@@ -72,6 +72,15 @@ fi
 # twitch-api-header=Authorization=OAuth token_value
 
 # Use the index array for order
+build_twitch_cmd() {
+	local author="$1"
+	local url="$2"
+	local q_author q_url
+
+	printf -v q_author '%q' "$author"
+	printf -v q_url '%q' "$url"
+	printf '%s --author-name %s %s' "$SL_CMD" "$q_author" "$q_url"
+}
 validate_streamer_key() {
 	case "$1" in
 		*[[:space:]]*)
@@ -111,6 +120,12 @@ DEF=${TTV_DEF}
 
 echo "Recreating ${SESS_NAME} definition file as \"${DEF_FILE}\"..."
 printf "%b" "${DEF}" > "${DEF_FILE}"
+
+if [ "${TMUX_LIVESTREAMS_DEBUG:-0}" = "1" ]; then
+	echo "Debug: generated definition file ${DEF_FILE}"
+	cat "${DEF_FILE}"
+	exit 0
+fi
 
 if [ "${DETACH}" -eq 1 ]; then
 	if tmux has-session -t "${SESS_NAME}" >/dev/null 2>&1; then

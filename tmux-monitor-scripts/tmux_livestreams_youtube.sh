@@ -60,6 +60,15 @@ fi
 # Might have to copy the symlink into ${HOME}/venv/bin/ too
 LS_SAVER_CMD="source ${HOME}/venv/bin/activate && ${LS_SAVER} monitor"
 
+build_youtube_cmd() {
+	local qual="$1"
+	local disp="$2"
+	local q_disp
+
+	printf -v q_disp '%q' "$disp"
+	printf '%s -q %s -d -s %s' "$LS_SAVER_CMD" "$qual" "$q_disp"
+}
+
 validate_streamer_key() {
 	case "$1" in
 		*[[:space:]]*)
@@ -141,11 +150,20 @@ while [ $i -lt $len ]; do
 done
 
 DEF=${YT_DEF}
-ensure_latest_ytdlp
-start_bgutil_provider
+
+if [ "${TMUX_LIVESTREAMS_DEBUG:-0}" != "1" ]; then
+	ensure_latest_ytdlp
+	start_bgutil_provider
+fi
 
 echo "Recreating ${SESS_NAME} definition file as \"${DEF_FILE}\"..."
 printf "%b" "${DEF}" > "${DEF_FILE}"
+
+if [ "${TMUX_LIVESTREAMS_DEBUG:-0}" = "1" ]; then
+	echo "Debug: generated definition file ${DEF_FILE}"
+	cat "${DEF_FILE}"
+	exit 0
+fi
 
 if [ "${DETACH}" -eq 1 ]; then
 	if tmux has-session -t "${SESS_NAME}" >/dev/null 2>&1; then
