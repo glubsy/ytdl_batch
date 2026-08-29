@@ -89,9 +89,11 @@ build_twitch_cmd() {
 	local url="$2"
 	local q_author q_url
 
-	printf -v q_author '%q' "$author"
+	q_author="$author"
+	q_author=${q_author//\\/\\\\}
+	q_author=${q_author//\"/\\\"}
 	printf -v q_url '%q' "$url"
-	printf '%s --author-name %s %s' "$SL_CMD" "$q_author" "$q_url"
+	printf '%s --author-name \\"%s\\" %s' "$SL_CMD" "$q_author" "$q_url"
 }
 validate_streamer_key() {
 	case "$1" in
