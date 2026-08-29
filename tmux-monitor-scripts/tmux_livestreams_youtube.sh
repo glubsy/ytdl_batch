@@ -60,6 +60,15 @@ fi
 # Might have to copy the symlink into ${HOME}/venv/bin/ too
 LS_SAVER_CMD="source ${HOME}/venv/bin/activate && ${LS_SAVER} monitor"
 
+validate_streamer_key() {
+	case "$1" in
+		*[[:space:]]*)
+			echo "Error: streamer key "$1" in ${CONFIG_FILE} contains whitespace. Use an underscore-safe key and keep the display name in the value." >&2
+			exit 1
+			;;
+	esac
+}
+
 ensure_bgutil_provider() {
 	if [ ! -d "${HOME}/opt" ]; then
 		mkdir -p "${HOME}/opt"
@@ -111,9 +120,11 @@ len=${#YT_STREAMER_INDEX[@]}
 i=0
 while [ $i -lt $len ]; do
 	name1="${YT_STREAMER_INDEX[$i]}"
+	validate_streamer_key "$name1"
 	IFS='|' read -r dir1 disp1 qual1 <<< "${YT_STREAMERS["$name1"]}"
 	if [ $((i+1)) -lt $len ]; then
 		name2="${YT_STREAMER_INDEX[$((i+1))]}"
+		validate_streamer_key "$name2"
 		IFS='|' read -r dir2 disp2 qual2 <<< "${YT_STREAMERS["$name2"]}"
 		YT_DEF+=$'\n'
 		YT_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"

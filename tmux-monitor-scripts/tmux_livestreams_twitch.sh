@@ -72,14 +72,25 @@ fi
 # twitch-api-header=Authorization=OAuth token_value
 
 # Use the index array for order
+validate_streamer_key() {
+	case "$1" in
+		*[[:space:]]*)
+			echo "Error: streamer key "$1" in ${CONFIG_FILE} contains whitespace. Use an underscore-safe key and keep the display name in the value." >&2
+			exit 1
+			;;
+	esac
+}
+
 TTV_DEF="#set-option remain-on-exit on\n"
 len=${#TTV_STREAMER_INDEX[@]}
 i=0
 while [ $i -lt $len ]; do
 	name1="${TTV_STREAMER_INDEX[$i]}"
+	validate_streamer_key "$name1"
 	IFS='|' read -r dir1 author1 url1 disp1 <<< "${TTV_STREAMERS["$name1"]}"
 	if [ $((i+1)) -lt $len ]; then
 		name2="${TTV_STREAMER_INDEX[$((i+1))]}"
+		validate_streamer_key "$name2"
 		IFS='|' read -r dir2 author2 url2 disp2 <<< "${TTV_STREAMERS["$name2"]}"
 		TTV_DEF+=$'\n'
 		TTV_DEF+="neww -n \"${name1}+${name2}\" -c \"${DOWNLOAD_TARGET}/${dir1}\"\n"
